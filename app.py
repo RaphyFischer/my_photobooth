@@ -1,6 +1,7 @@
-import sys, os, time, math
+import sys, os, time, copy
 from datetime import datetime
 import cv2
+import numpy as np
 import gphoto2 as gp
 from playsound import playsound
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
@@ -8,10 +9,11 @@ from PyQt5.QtGui import QImage, QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
 
-WELCOME_MESSAGE = "Welcome to Hochzeit"
-TARGET_DIR = "data/Hochzeit_xyz"
-COUNTDOWN_SECONDS = 3
-CAMERA_INDEX = 0
+WELCOME_MESSAGE = "Welcome to our Photobooth"
+TARGET_DIR = "data/test"
+COUNTDOWN_SECONDS = 5
+PREVIEW_TIME_SECONDS = 5
+CAMERA_INDEX = 2
 
 STREAM_CAPTURE = False                  # global variable indicating a open stream
 
@@ -30,19 +32,21 @@ class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
 
     def run(self):
+        height, width, channel = 720, 1280, 3
+        cropped_width = int(4*height/3)                     #crop black borders of 16:9 monitor
+        width_to_crop = width-cropped_width
+        
         cap = cv2.VideoCapture(CAMERA_INDEX)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
         print("Start streaming images")
         while STREAM_CAPTURE:
             ret, frame = cap.read()
             if ret:
-                # https://stackoverflow.com/a/55468544/6622587
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = rgbImage.shape
-                bytesPerLine = ch * w
-                convertToQtFormat = QImage(rgbImage.data, w, h, bytesPerLine, QImage.Format_RGB888)
+                rgbImage = rgbImage[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
+                convertToQtFormat = QImage(rgbImage.data, cropped_width, height, channel*cropped_width, QImage.Format_RGB888)
                 self.changePixmap.emit(convertToQtFormat)
         print("Stop streaming images")
 
