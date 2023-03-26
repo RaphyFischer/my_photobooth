@@ -1,7 +1,6 @@
-import sys, os, time, copy
+import sys, os, time
 from datetime import datetime
 import cv2
-import numpy as np
 import gphoto2 as gp
 from playsound import playsound
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
@@ -16,6 +15,7 @@ PREVIEW_TIME_SECONDS = 5
 CAMERA_INDEX = 2
 
 STREAM_CAPTURE = False                  # global variable indicating a open stream
+FREEZE_STREAM = False
 
 # init the camera
 callback_obj = gp.check_result(gp.use_python_logging())
@@ -47,22 +47,24 @@ class StreamThread(QThread):
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgbImage = rgbImage[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
                 convertToQtFormat = QImage(rgbImage.data, cropped_width, height, channel*cropped_width, QImage.Format_RGB888)
-                self.changePixmap.emit(convertToQtFormat)
+                if not FREEZE_STREAM: self.changePixmap.emit(convertToQtFormat)
         print("Stop streaming images")
 
-class CountDownWorker(QObject):
+class CaptureWorker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(int)
 
     @pyqtSlot()
-    def do_work(self):
+    def run(self):
+        global FREEZE_STREAM
+
         print("Countdown started")
         for secs_left in range(COUNTDOWN_SECONDS, 0, -1):
             playsound(os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav"), block=False)
             self.progress.emit(secs_left)
             time.sleep(1)
-
         self.progress.emit(0)
+
         print('Capturing image')
         file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
         print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
@@ -70,6 +72,11 @@ class CountDownWorker(QObject):
         print('Copying image to', target)
         camera_file = CAMERA.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
         camera_file.save(target)
+
+        print('Showing preview')
+        FREEZE_STREAM = True
+        time.sleep(PREVIEW_TIME_SECONDS)
+        FREEZE_STREAM = False
 
         self.finished.emit()
 
@@ -90,11 +97,11 @@ class Window(QMainWindow, Ui_MainWindow):
         self.home_button.clicked.connect(self.homeButtonClicked)
         self.capture_button.clicked.connect(self.captureButtonClicked)
 
-        self.worker = CountDownWorker()
+        self.worker = CaptureWorker()
         self.worker_thread = QThread()
         self.worker.progress.connect(self.update_countdown)
         self.worker.finished.connect(self.finished_capture)
-        self.work_requested.connect(self.worker.do_work)
+        self.work_requested.connect(self.worker.run)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
 
@@ -134,16 +141,13 @@ class Window(QMainWindow, Ui_MainWindow):
             self.capture_button.setText(str(secs_left))
         else:
             self.capture_button.setText("Click")
-        #self.capture_button.repaint()
 
     def finished_capture(self):
         self.capture_button.setText("")
         self.capture_button.setIcon(QIcon(":/images/images/aperature.png"))
-        #self.capture_button.repaint()
 
     def setText(self, secs_left):
         self.capture_button.setText(str(secs_left))
-        #self.capture_button.repaint()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
