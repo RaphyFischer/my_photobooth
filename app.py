@@ -2,6 +2,7 @@ import sys, os, time, math
 from datetime import datetime
 import cv2
 import gphoto2 as gp
+from playsound import playsound
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
 from PyQt5.QtGui import QImage, QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -54,6 +55,7 @@ class CountDownWorker(QObject):
     def do_work(self):
         print("Countdown started")
         for secs_left in range(COUNTDOWN_SECONDS, 0, -1):
+            playsound(os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav"), block=False)
             self.progress.emit(secs_left)
             time.sleep(1)
 
