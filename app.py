@@ -24,8 +24,7 @@ except:
     print("No Camera connected or connected Camera not compatible with gphoto2")
 
 # create the target dir if necessary
-if not os.path.exists(TARGET_DIR):
-    os.makedirs(TARGET_DIR)
+os.makedirs(os.path.join(os.path.dirname(__file__), TARGET_DIR),exist_ok=True)
 
 class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -63,7 +62,7 @@ class CountDownWorker(QObject):
         print('Capturing image')
         file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
         print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-        target = os.path.join(TARGET_DIR, "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        target = os.path.join(os.path.dirname(__file__), TARGET_DIR, "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         print('Copying image to', target)
         camera_file = CAMERA.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
         camera_file.save(target)
