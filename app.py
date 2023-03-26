@@ -145,7 +145,7 @@ class Window(QMainWindow, Ui_MainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     win = Window()
-    win.show()
-    #win.showFullScreen()
+    #win.show()
+    win.showFullScreen()
     sys.exit(app.exec())
     CAMERA.exit()
