@@ -13,8 +13,13 @@ from MainWindow import Ui_MainWindow
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
 COUNTDOWN_SECONDS = 5
+COUNTDOWN_SOUND = os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav")
 PREVIEW_TIME_SECONDS = 5
+PRINTER_NAME = "CP400"
 CAMERA_INDEX = 2
+SHOW_PRINT = True
+SHOW_DELETE = True
+SHOW_SHARE = True
 
 STREAM_CAPTURE = False                  # global variable indicating a open stream
 FREEZE_STREAM = False
@@ -89,6 +94,10 @@ class Window(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
         self.refreshWelcomeText()
+        self.overlay_buttons_on_stream()
+        self.print_button.setVisible(False)
+        self.delete_button.setVisible(False)
+        self.download_button.setVisible(False)
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
@@ -97,42 +106,45 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.start_button.clicked.connect(self.startButtonClicked)
         self.home_button.clicked.connect(self.homeButtonClicked)
+        self.delete_button.clicked.connect(self.deleteButtonClicked)
         self.capture_button.clicked.connect(self.captureButtonClicked)
+        self.download_button.clicked.connect(self.downloadButtonClicked)
+        self.print_button.clicked.connect(self.printButtonClicked)
+        self.back_button.clicked.connect(self.homeButtonClicked)
 
+        # start capture worker
         self.worker = CaptureWorker()
         self.worker_thread = QThread()
         self.worker.progress.connect(self.update_countdown)
-        self.worker.finished.connect(self.finished_capture)
         self.work_requested.connect(self.worker.run)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
-
-    def refreshWelcomeText(self):
-        message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+WELCOME_MESSAGE
-        self.welcome_message.setText(message_and_time)
-
-    @pyqtSlot(QImage)
-    def setImage(self, image):
-        self.stream.setPixmap(QPixmap.fromImage(image))
-
-    def startButtonClicked(self):
-        global STREAM_CAPTURE
-
-        print("Start Button pressed")
-        STREAM_CAPTURE = True
-        self.stackedWidget.setCurrentIndex(1)
 
         # start streaming thread
         th = StreamThread(self)
         th.changePixmap.connect(self.setImage)
         th.start()
 
-    def homeButtonClicked(self):
-        global STREAM_CAPTURE
+        # start web server hosting images
+        if SHOW_SHARE: th = ServerThread(self).start()
 
-        print("Home Button pressed")
-        STREAM_CAPTURE = False
-        self.stackedWidget.setCurrentIndex(0)
+    def refreshWelcomeText(self):
+        message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+WELCOME_MESSAGE
+        self.welcome_message.setText(message_and_time)
+
+    def overlay_buttons_on_stream(self):
+        self.photo_page_grid.addWidget(self.stream, 0, 0, 0, 0)
+        self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 0, 0)
+
+    @pyqtSlot(QImage)
+    def setImage(self, image):
+        self.stream.setPixmap(QPixmap.fromImage(image))
+
+    def startButtonClicked(self):
+        print("Start Button pressed")
+        self.showImageControlButtons(False)
+        self.stackedWidget.setCurrentIndex(1)
+        self.captureButtonClicked()
 
     def captureButtonClicked(self):
         global PREVIEW_TIME_SECONDS
@@ -153,6 +165,19 @@ class Window(QMainWindow, Ui_MainWindow):
             self.capture_button.setIcon(QIcon(":/images/images/aperature.png"))
             self.showImageControlButtons(True)
             self.capture_button.setEnabled(True)      
+
+    def homeButtonClicked(self):
+        print("Home Button pressed")
+        self.stackedWidget.setCurrentIndex(0)
+    
+    def deleteButtonClicked(self):
+        print("Delete last Photo")
+        os.remove(FILE_NAME)
+
+    def printButtonClicked(self):
+        # use CUPS+Gutenprint to print Image via Selpy CP400
+        print("Printing photo")
+        subprocess.Popen(["lpr", "-P", PRINTER_NAME, FILE_NAME])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="images">
+    <file>images/home.png</file>
+    <file>images/print.png</file>
+    <file>images/remove_image.png</file>
+    <file>images/share.png</file>
     <file>images/background.png</file>
     <file>images/aperature.png</file>
   </qresource>
