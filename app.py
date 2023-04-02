@@ -35,22 +35,25 @@ class StreamThread(QThread):
 
     def run(self):
         height, width, channel = 720, 1280, 3
-        cropped_width = int(4*height/3)                     #crop black borders of 16:9 monitor
+        scale = 1.2
+        cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
+        scaled_width = int(cropped_width*scale)
+        scaled_height = int(height*scale)
         
         cap = cv2.VideoCapture(CAMERA_INDEX)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
-        print("Start streaming images")
-        while STREAM_CAPTURE:
+        while True:
             ret, frame = cap.read()
             if ret:
+                frame = cv2.flip(frame, 1)
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgbImage = rgbImage[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
-                convertToQtFormat = QImage(rgbImage.data, cropped_width, height, channel*cropped_width, QImage.Format_RGB888)
+                rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
+                convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
                 if not FREEZE_STREAM: self.changePixmap.emit(convertToQtFormat)
-        print("Stop streaming images")
 
 class CaptureWorker(QObject):
     finished = pyqtSignal()
@@ -157,4 +160,3 @@ if __name__ == "__main__":
     #win.show()
     win.showFullScreen()
     sys.exit(app.exec())
-    CAMERA.exit()
