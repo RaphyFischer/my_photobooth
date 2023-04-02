@@ -3,12 +3,16 @@ from datetime import datetime
 import subprocess
 import functools
 import cv2
-import gphoto2 as gp
-from playsound import playsound
+from PIL import Image
+import qrcode
+import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
 from PyQt5.QtGui import QImage, QPixmap, QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from PyAccessPoint import pyaccesspoint
+import netifaces as ni
 
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
@@ -20,20 +24,31 @@ CAMERA_INDEX = 2
 SHOW_PRINT = True
 SHOW_DELETE = True
 SHOW_SHARE = True
+WEBSERVER_PORT = 1234
+ACCESS_POINT_SSID = "photobox"
+ACCESS_POINT_PW = "my_photobooth"
 
-STREAM_CAPTURE = False                  # global variable indicating a open stream
+FILE_NAME = ""                          # holds last filename
 FREEZE_STREAM = False
-
-# init the camera
-callback_obj = gp.check_result(gp.use_python_logging())
-CAMERA = gp.Camera()
-try:
-    CAMERA.init()
-except:
-    print("No Camera connected or connected Camera not compatible with gphoto2")
+proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)
+WEBSERVER_DEVICE = wifi_device = proc.stdout.decode("utf8").rstrip("\n")
+WEBSERVER_IP = ni.ifaddresses(wifi_device)[ni.AF_INET][0]['addr']
 
 # create the target dir if necessary
 os.makedirs(os.path.join(os.path.dirname(__file__), TARGET_DIR),exist_ok=True)
+
+class ServerThread(QThread):
+    def run(self):
+        '''
+        print("Creating access point")
+        access_point = pyaccesspoint.AccessPoint(wlan=WEBSERVER_DEVICE, ssid=ACCESS_POINT_SSID, password=ACCESS_POINT_PW)
+        access_point.start()
+        '''
+
+        print("Hosting Webserver on %s:%s" %(WEBSERVER_IP, WEBSERVER_PORT))
+        MyHandler = functools.partial(SimpleHTTPRequestHandler, directory=TARGET_DIR)
+        httpd = HTTPServer((WEBSERVER_IP, WEBSERVER_PORT), MyHandler)
+        httpd.serve_forever()
 
 class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -178,6 +193,37 @@ class Window(QMainWindow, Ui_MainWindow):
         # use CUPS+Gutenprint to print Image via Selpy CP400
         print("Printing photo")
         subprocess.Popen(["lpr", "-P", PRINTER_NAME, FILE_NAME])
+
+    def downloadButtonClicked(self):
+        print("Switch to download site")
+
+        # create first qr code with wifi login
+        text = '<html><head/><body><p><span style=" font-size:26pt; font-weight:600;">Schritt 1:</span></p><p><span style=" font-size:18pt;">Verbinden Sie das Gerät mit dem Wifi Hotspot</span></p><p><span style=" font-size:18pt;">SSID: </span><span style=" font-size:18pt; font-weight:600;">%s</span></p><p><span style=" font-size:18pt;">Passwort: </span><span style=" font-size:18pt; font-weight:600; color:#000000;">%s</span></p></body></html>' %(ACCESS_POINT_SSID, ACCESS_POINT_PW)
+        self.instructions_step1.setText(text)
+        self.instructions_step1.setMargin(20)
+        wifi = "WIFI:S:%s;T:WPA;P:%s;;" %(ACCESS_POINT_SSID, ACCESS_POINT_PW)
+        img = np.array(qrcode.make(wifi).resize((600,600), Image.NEAREST))
+        img = np.stack((img,)*3, axis=-1)
+        qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
+        self.qr_code1.setPixmap(QPixmap.fromImage(qt_img))
+
+        # create second qr code with image url
+        text = '<html><head/><body><p><span style=" font-size:26pt; font-weight:600;">Schritt2:</span></p><p><span style=" font-size:18pt;">Scannen Sie den QR-Code<br/>um das Bild auf Ihrem Handy herunterzuladen<br/>(lange gedrückt halten -&gt; Bild speichern)</span></p></body></html>'
+        self.instructions_step2.setText(text)
+        self.instructions_step2.setMargin(20)
+        url = 'http://%s:%s/%s' %(WEBSERVER_IP, WEBSERVER_PORT, FILE_NAME.split("/")[-1])
+        img = np.array(qrcode.make(url).resize((600,600), Image.NEAREST))
+        img = np.stack((img,)*3, axis=-1)
+        qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
+        self.qr_code2.setPixmap(QPixmap.fromImage(qt_img))
+
+        self.stackedWidget.setCurrentIndex(2)
+
+    def showImageControlButtons(self, visible):
+        self.home_button.setVisible(visible)
+        if SHOW_PRINT: self.print_button.setVisible(visible)
+        if SHOW_DELETE: self.delete_button.setVisible(visible)
+        if SHOW_SHARE: self.download_button.setVisible(visible)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
