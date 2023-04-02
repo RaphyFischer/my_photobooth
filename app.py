@@ -1,5 +1,7 @@
 import sys, os, time
 from datetime import datetime
+import subprocess
+import functools
 import cv2
 import gphoto2 as gp
 from playsound import playsound
@@ -60,7 +62,6 @@ class CaptureWorker(QObject):
 
         print("Countdown started")
         for secs_left in range(COUNTDOWN_SECONDS, 0, -1):
-            playsound(os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav"), block=False)
             self.progress.emit(secs_left)
             time.sleep(1)
         self.progress.emit(0)
@@ -138,6 +139,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def update_countdown(self, secs_left):
         self.capture_button.setIcon(QIcon())
         if secs_left > 0:
+            subprocess.Popen(["aplay", COUNTDOWN_SOUND])
             self.capture_button.setText(str(secs_left))
         else:
             self.capture_button.setText("Click")
