@@ -56,33 +56,31 @@ class StreamThread(QThread):
                 if not FREEZE_STREAM: self.changePixmap.emit(convertToQtFormat)
 
 class CaptureWorker(QObject):
-    finished = pyqtSignal()
     progress = pyqtSignal(int)
 
     @pyqtSlot()
     def run(self):
-        global FREEZE_STREAM
+        global FREEZE_STREAM, FILE_NAME, PREVIEW_TIME_SECONDS
 
         print("Countdown started")
         for secs_left in range(COUNTDOWN_SECONDS, 0, -1):
             self.progress.emit(secs_left)
             time.sleep(1)
-        self.progress.emit(0)
 
         print('Capturing image')
-        file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
-        print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-        target = os.path.join(os.path.dirname(__file__), TARGET_DIR, "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-        print('Copying image to', target)
-        camera_file = CAMERA.file_get(file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-        camera_file.save(target)
+        FILE_NAME = os.path.join(os.path.dirname(__file__), TARGET_DIR, "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        self.progress.emit(0)
+        #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
+        subprocess.Popen(["gphoto2", "--filename", FILE_NAME, "--capture-image-and-download", "--force-overwrite"])
+        time.sleep(0.2)
+        self.progress.emit(-1)
 
         print('Showing preview')
         FREEZE_STREAM = True
-        time.sleep(PREVIEW_TIME_SECONDS)
+        while PREVIEW_TIME_SECONDS > 0:
+            time.sleep(0.01)
+            PREVIEW_TIME_SECONDS -= 0.01
         FREEZE_STREAM = False
-
-        self.finished.emit()
 
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
@@ -137,6 +135,10 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(0)
 
     def captureButtonClicked(self):
+        global PREVIEW_TIME_SECONDS
+        PREVIEW_TIME_SECONDS = -1                           # stop preview
+        self.capture_button.setEnabled(False)
+        self.showImageControlButtons(False)
         self.work_requested.emit()
 
     def update_countdown(self, secs_left):
@@ -144,15 +146,13 @@ class Window(QMainWindow, Ui_MainWindow):
         if secs_left > 0:
             subprocess.Popen(["aplay", COUNTDOWN_SOUND])
             self.capture_button.setText(str(secs_left))
-        else:
+        elif secs_left == 0:                                # at capture
             self.capture_button.setText("Click")
-
-    def finished_capture(self):
-        self.capture_button.setText("")
-        self.capture_button.setIcon(QIcon(":/images/images/aperature.png"))
-
-    def setText(self, secs_left):
-        self.capture_button.setText(str(secs_left))
+        elif secs_left < 0:                                 # after capture
+            self.capture_button.setText("")
+            self.capture_button.setIcon(QIcon(":/images/images/aperature.png"))
+            self.showImageControlButtons(True)
+            self.capture_button.setEnabled(True)      
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
