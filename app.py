@@ -13,6 +13,7 @@ from MainWindow import Ui_MainWindow
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from PyAccessPoint import pyaccesspoint
 import netifaces as ni
+from list_cameras import list_stream_cameras
 
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
@@ -20,7 +21,7 @@ COUNTDOWN_SECONDS = 5
 COUNTDOWN_SOUND = os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav")
 PREVIEW_TIME_SECONDS = 5
 PRINTER_NAME = "CP400"
-CAMERA_INDEX = 2
+CAMERA_INDEX = list_stream_cameras()
 SHOW_PRINT = True
 SHOW_DELETE = True
 SHOW_SHARE = True
