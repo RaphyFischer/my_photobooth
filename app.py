@@ -22,6 +22,8 @@ COUNTDOWN_SOUND = os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_p
 PREVIEW_TIME_SECONDS = 5
 PRINTER_NAME = "CP400"
 CAMERA_INDEX = list_stream_cameras()
+SHOW_COLLAGE = False
+SHOW_FILTER = False
 SHOW_PRINT = True
 SHOW_DELETE = True
 SHOW_SHARE = True
@@ -111,9 +113,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.refreshWelcomeText()
         self.overlay_buttons_on_stream()
-        self.print_button.setVisible(False)
-        self.delete_button.setVisible(False)
-        self.download_button.setVisible(False)
+        self.collage_button.setVisible(SHOW_COLLAGE)
+        self.filters_button.setVisible(SHOW_FILTER)
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)

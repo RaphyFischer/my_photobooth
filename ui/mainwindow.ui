@@ -199,7 +199,7 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
             <item>
              <widget class="QPushButton" name="collage_button">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
@@ -617,7 +617,7 @@ radius: 1.35, stop: 0 #FF0000, stop: 1 #FF0000
             <item>
              <widget class="QPushButton" name="filters_button">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
