@@ -1,0 +1,5 @@
+opencv-python-headless
+pyqt5
+qrcode
+pyaccesspoint
+netifaces
