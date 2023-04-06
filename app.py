@@ -34,8 +34,9 @@ ACCESS_POINT_PW = "my_photobooth"
 FILE_NAME = ""                          # holds last filename
 FREEZE_STREAM = False
 proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)
-WEBSERVER_DEVICE = wifi_device = proc.stdout.decode("utf8").rstrip("\n")
-WEBSERVER_IP = ni.ifaddresses(wifi_device)[ni.AF_INET][0]['addr']
+WEBSERVER_DEVICE = proc.stdout.decode("utf8").rstrip("\n")
+try: WEBSERVER_IP = ni.ifaddresses(WEBSERVER_DEVICE)[ni.AF_INET][0]['addr']
+except: WEBSERVER_IP="127.0.0.1"
 
 # create the target dir if necessary
 os.makedirs(os.path.join(os.path.dirname(__file__), TARGET_DIR),exist_ok=True)

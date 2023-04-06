@@ -8,6 +8,7 @@ def list_stream_cameras():
     out, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     out, err = out.strip(), err.strip()
     for l in [i.split(b"\n\t") for i in out.split(b"\n\n")]:
+        if l == [b'']: continue
         index = int(l[1].decode()[-1])
         if index == 0:
             print("Index 0 is skipped because most of the times it belongs to a webcam")
