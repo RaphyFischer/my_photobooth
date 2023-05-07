@@ -14,6 +14,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from PyAccessPoint import pyaccesspoint
 import netifaces as ni
 from list_cameras import list_stream_cameras
+from settings_button import SettingsButton
 
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
@@ -114,6 +115,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.refreshWelcomeText()
         self.overlay_buttons_on_stream()
+        self.hidden_settings = SettingsButton(self.welcome_message)
         self.collage_button.setVisible(SHOW_COLLAGE)
         self.filters_button.setVisible(SHOW_FILTER)
 
@@ -122,6 +124,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.timer.timeout.connect(self.refreshWelcomeText)
         self.timer.start()
 
+        self.hidden_settings.longclicked.connect(self.settingsClicked)
         self.start_button.clicked.connect(self.startButtonClicked)
         self.home_button.clicked.connect(self.homeButtonClicked)
         self.delete_button.clicked.connect(self.deleteButtonClicked)
@@ -153,6 +156,10 @@ class Window(QMainWindow, Ui_MainWindow):
     def overlay_buttons_on_stream(self):
         self.photo_page_grid.addWidget(self.stream, 0, 0, 0, 0)
         self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 0, 0)
+
+    def settingsClicked(self):
+        print("Go to settings")
+        self.stackedWidget.setCurrentIndex(3)
 
     @pyqtSlot(QImage)
     def setImage(self, image):
