@@ -131,6 +131,7 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
              <widget class="QLabel" name="welcome_message">
               <property name="font">
                <font>
+                <family>Oxanium</family>
                 <pointsize>25</pointsize>
                 <weight>75</weight>
                 <bold>true</bold>
@@ -215,7 +216,10 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
               </property>
               <property name="font">
                <font>
+                <family>Oxanium</family>
                 <pointsize>24</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
                </font>
               </property>
               <property name="styleSheet">
@@ -573,7 +577,8 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
               </property>
               <property name="font">
                <font>
-                <pointsize>50</pointsize>
+                <family>Oxanium</family>
+                <pointsize>70</pointsize>
                 <weight>75</weight>
                 <bold>true</bold>
                </font>
@@ -633,7 +638,10 @@ radius: 1.35, stop: 0 #FF0000, stop: 1 #FF0000
               </property>
               <property name="font">
                <font>
+                <family>Oxanium</family>
                 <pointsize>24</pointsize>
+                <weight>75</weight>
+                <bold>true</bold>
                </font>
               </property>
               <property name="styleSheet">
@@ -711,7 +719,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
-       <layout class="QGridLayout" name="photo_page_grid" rowminimumheight="0,0" columnminimumwidth="0,0">
+       <layout class="QGridLayout" name="photo_page_grid">
         <item row="0" column="1">
          <widget class="QLabel" name="stream">
           <property name="sizePolicy">
@@ -794,7 +802,7 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="home_button">
+           <widget class="QToolButton" name="home_button">
             <property name="minimumSize">
              <size>
               <width>150</width>
@@ -803,11 +811,12 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
             </property>
             <property name="font">
              <font>
-              <pointsize>24</pointsize>
+              <family>Oxanium</family>
+              <pointsize>18</pointsize>
              </font>
             </property>
             <property name="styleSheet">
-             <string notr="true">QPushButton {
+             <string notr="true">QToolButton {
 color: #FFFFFF;
 border: none;
 border-radius: 75px;
@@ -819,14 +828,14 @@ radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 padding: 5px;
 }
 
-QPushButton:hover {
+QToolButton:hover {
 background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
 radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 );
 }
 
-QPushButton:pressed {
+QToolButton:pressed {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -834,7 +843,7 @@ radius: 1.35, stop: 0 #1C71D8, stop: 1 #1C71D8
 );
 }
 
-QPushButton:disabled {
+QToolButton:disabled {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -843,11 +852,11 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 }</string>
             </property>
             <property name="text">
-             <string/>
+             <string>Save</string>
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
-              <normaloff>:/images/images/home.png</normaloff>:/images/images/home.png</iconset>
+              <normaloff>:/images/images/save.png</normaloff>:/images/images/save.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -855,13 +864,13 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
               <height>100</height>
              </size>
             </property>
-            <property name="flat">
-             <bool>false</bool>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="delete_button">
+           <widget class="QToolButton" name="delete_button">
             <property name="minimumSize">
              <size>
               <width>150</width>
@@ -870,11 +879,12 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="font">
              <font>
-              <pointsize>24</pointsize>
+              <family>Oxanium</family>
+              <pointsize>18</pointsize>
              </font>
             </property>
             <property name="styleSheet">
-             <string notr="true">QPushButton {
+             <string notr="true">QToolButton {
 color: #FFFFFF;
 border: none;
 border-radius: 75px;
@@ -886,14 +896,14 @@ radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 padding: 5px;
 }
 
-QPushButton:hover {
+QToolButton:hover {
 background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
 radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 );
 }
 
-QPushButton:pressed {
+QToolButton:pressed {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -901,7 +911,7 @@ radius: 1.35, stop: 0 #1C71D8, stop: 1 #1C71D8
 );
 }
 
-QPushButton:disabled {
+QToolButton:disabled {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -910,7 +920,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 }</string>
             </property>
             <property name="text">
-             <string/>
+             <string>Delete</string>
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
@@ -921,6 +931,9 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
               <width>100</width>
               <height>100</height>
              </size>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
             </property>
            </widget>
           </item>
@@ -937,6 +950,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="font">
              <font>
+              <family>Oxanium</family>
               <pointsize>45</pointsize>
               <weight>75</weight>
               <bold>true</bold>
@@ -994,7 +1008,7 @@ radius: 1.35, stop: 0 #FF0000, stop: 1 #FF0000
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="download_button">
+           <widget class="QToolButton" name="download_button">
             <property name="minimumSize">
              <size>
               <width>150</width>
@@ -1003,14 +1017,15 @@ radius: 1.35, stop: 0 #FF0000, stop: 1 #FF0000
             </property>
             <property name="font">
              <font>
-              <pointsize>24</pointsize>
+              <family>Oxanium</family>
+              <pointsize>18</pointsize>
              </font>
             </property>
             <property name="autoFillBackground">
              <bool>false</bool>
             </property>
             <property name="styleSheet">
-             <string notr="true">QPushButton {
+             <string notr="true">QToolButton {
 color: #FFFFFF;
 border: none;
 border-radius: 75px;
@@ -1022,14 +1037,14 @@ radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 padding: 5px;
 }
 
-QPushButton:hover {
+QToolButton:hover {
 background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
 radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 );
 }
 
-QPushButton:pressed {
+QToolButton:pressed {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -1037,7 +1052,7 @@ radius: 1.35, stop: 0 #1C71D8, stop: 1 #1C71D8
 );
 }
 
-QPushButton:disabled {
+QToolButton:disabled {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -1046,7 +1061,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 }</string>
             </property>
             <property name="text">
-             <string/>
+             <string>Share</string>
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
@@ -1058,10 +1073,13 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
               <height>100</height>
              </size>
             </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
+            </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="print_button">
+           <widget class="QToolButton" name="print_button">
             <property name="enabled">
              <bool>true</bool>
             </property>
@@ -1079,11 +1097,12 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="font">
              <font>
-              <pointsize>24</pointsize>
+              <family>Oxanium</family>
+              <pointsize>18</pointsize>
              </font>
             </property>
             <property name="styleSheet">
-             <string notr="true">QPushButton {
+             <string notr="true">QToolButton {
 color: #FFFFFF;
 border: none;
 border-radius: 75px;
@@ -1095,14 +1114,14 @@ radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 padding: 5px;
 }
 
-QPushButton:hover {
+QToolButton:hover {
 background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
 radius: 1.35, stop: 0 #F6F5F4, stop: 1 #62A0EA
 );
 }
 
-QPushButton:pressed {
+QToolButton:pressed {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -1110,7 +1129,7 @@ radius: 1.35, stop: 0 #1C71D8, stop: 1 #1C71D8
 );
 }
 
-QPushButton:disabled {
+QToolButton:disabled {
 border-style: inset;
 background: qradialgradient(
 cx: 0.4, cy: -0.1, fx: 0.4, fy: -0.1,
@@ -1119,7 +1138,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 }</string>
             </property>
             <property name="text">
-             <string/>
+             <string>Print</string>
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
@@ -1131,8 +1150,8 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
               <height>100</height>
              </size>
             </property>
-            <property name="flat">
-             <bool>false</bool>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
             </property>
            </widget>
           </item>

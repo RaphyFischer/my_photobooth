@@ -4,7 +4,11 @@
     <file>images/print.png</file>
     <file>images/remove_image.png</file>
     <file>images/share.png</file>
+    <file>images/save.png</file>
     <file>images/background.png</file>
     <file>images/aperature.png</file>
+  </qresource>
+  <qresource prefix="fonts">
+    <file>font/Oxanium-Bold.ttf</file>
   </qresource>
 </RCC>
