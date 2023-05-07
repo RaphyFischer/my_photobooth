@@ -137,7 +137,7 @@ class Window(QMainWindow, Ui_MainWindow):
         # start capture worker
         self.worker = CaptureWorker()
         self.worker_thread = QThread()
-        self.worker.progress.connect(self.update_countdown)
+        self.worker.progress.connect(self.updateCountdown)
         self.work_requested.connect(self.worker.run)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
@@ -179,7 +179,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.showImageControlButtons(False)
         self.work_requested.emit()
 
-    def update_countdown(self, secs_left):
+    def updateCountdown(self, secs_left):
         self.capture_button.setIcon(QIcon())
         if secs_left > 0:
             subprocess.Popen(["aplay", COUNTDOWN_SOUND])
