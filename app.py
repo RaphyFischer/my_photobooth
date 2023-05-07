@@ -238,6 +238,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    QFontDatabase.addApplicationFont("ui/font/Oxanium-Bold.ttf")
     win = Window()
     #win.show()
     win.showFullScreen()
