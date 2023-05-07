@@ -16,6 +16,7 @@ import netifaces as ni
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
 
+### Edit Settings here
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
 COUNTDOWN_SECONDS = 5
@@ -25,12 +26,16 @@ PRINTER_NAME = "CP400"
 CAMERA_INDEX = list_stream_cameras()
 SHOW_COLLAGE = False
 SHOW_FILTER = False
-SHOW_PRINT = True
+SHOW_SAVE = True                            #save button is also back button. So this is always visible
 SHOW_DELETE = True
+SHOW_RECAPTURE = True
 SHOW_SHARE = True
+SHOW_PRINT = True
+SHOW_BUTTON_TEXT = False
 WEBSERVER_PORT = 1234
 ACCESS_POINT_SSID = "photobox"
 ACCESS_POINT_PW = "my_photobooth"
+###
 
 FILE_NAME = ""                          # holds last filename
 FREEZE_STREAM = False
@@ -158,6 +163,12 @@ class Window(QMainWindow, Ui_MainWindow):
         self.photo_page_grid.addWidget(self.stream, 0, 0, 0, 0)
         self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 0, 0)
 
+        if SHOW_BUTTON_TEXT:
+            self.home_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+            self.delete_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+            self.download_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+            self.print_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+
     def settingsClicked(self):
         print("Go to settings")
         self.stackedWidget.setCurrentIndex(3)
@@ -199,6 +210,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def deleteButtonClicked(self):
         print("Delete last Photo")
         os.remove(FILE_NAME)
+        self.homeButtonClicked()
 
     def printButtonClicked(self):
         # use CUPS+Gutenprint to print Image via Selpy CP400
@@ -231,10 +243,18 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(2)
 
     def showImageControlButtons(self, visible):
-        self.home_button.setVisible(visible)
-        if SHOW_PRINT: self.print_button.setVisible(visible)
-        if SHOW_DELETE: self.delete_button.setVisible(visible)
-        if SHOW_SHARE: self.download_button.setVisible(visible)
+        if visible:                                                     # icon menue is visible
+            self.home_button.setVisible(True)
+            self.delete_button.setVisible(SHOW_DELETE)
+            self.capture_button.setVisible(SHOW_RECAPTURE)
+            self.download_button.setVisible(SHOW_SHARE)
+            self.print_button.setVisible(SHOW_PRINT)
+        else:                                                           # capture countdown is running
+            self.capture_button.setVisible(True)
+            self.home_button.setVisible(False)
+            self.delete_button.setVisible(False)
+            self.download_button.setVisible(False)
+            self.print_button.setVisible(False)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
