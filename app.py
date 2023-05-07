@@ -102,9 +102,10 @@ class CaptureWorker(QObject):
 
         print('Showing preview')
         FREEZE_STREAM = True
-        while PREVIEW_TIME_SECONDS > 0:
+        preview_countdown = PREVIEW_TIME_SECONDS
+        while preview_countdown > 0 and FREEZE_STREAM:
             time.sleep(0.01)
-            PREVIEW_TIME_SECONDS -= 0.01
+            preview_countdown -= 0.01
         FREEZE_STREAM = False
 
 class Window(QMainWindow, Ui_MainWindow):
@@ -172,8 +173,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.captureButtonClicked()
 
     def captureButtonClicked(self):
-        global PREVIEW_TIME_SECONDS
-        PREVIEW_TIME_SECONDS = -1                           # stop preview
+        global FREEZE_STREAM
+        FREEZE_STREAM = False                       # stops the preview
         self.capture_button.setEnabled(False)
         self.showImageControlButtons(False)
         self.work_requested.emit()
