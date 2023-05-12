@@ -209,7 +209,10 @@ class Window(QMainWindow, Ui_MainWindow):
     
     def deleteButtonClicked(self):
         print("Delete last Photo")
-        os.remove(FILE_NAME)
+        try:
+            os.remove(FILE_NAME)
+        except FileNotFoundError:
+            pass
         self.homeButtonClicked()
 
     def printButtonClicked(self):
