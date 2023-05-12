@@ -120,6 +120,7 @@ class Window(QMainWindow, Ui_MainWindow):
         super().__init__(parent)
         self.setupUi(self)
         self.refreshWelcomeText()
+        self.setRecaptureMode()
         self.overlay_buttons_on_stream()
         self.hidden_settings = SettingsButton(self.welcome_message)
         self.collage_button.setVisible(SHOW_COLLAGE)
@@ -158,6 +159,13 @@ class Window(QMainWindow, Ui_MainWindow):
     def refreshWelcomeText(self):
         message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+WELCOME_MESSAGE
         self.welcome_message.setText(message_and_time)
+
+    def setRecaptureMode(self):
+        # if recapture is activated show home button in photo view else show save button
+        icon = QIcon()
+        if SHOW_RECAPTURE:icon.addPixmap(QPixmap(":/images/images/home.png"), QIcon.Normal, QIcon.Off)
+        else: icon.addPixmap(QPixmap(":/images/images/save.png"), QIcon.Normal, QIcon.Off)
+        self.home_button.setIcon(icon)
 
     def overlay_buttons_on_stream(self):
         self.photo_page_grid.addWidget(self.stream, 0, 0, 0, 0)
