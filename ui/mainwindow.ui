@@ -140,6 +140,9 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
                 <bold>true</bold>
                </font>
               </property>
+              <property name="styleSheet">
+               <string notr="true">color: rgb(0, 0, 0);</string>
+              </property>
               <property name="text">
                <string>TextLabel</string>
               </property>
@@ -723,6 +726,12 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
        <layout class="QGridLayout" name="photo_page_grid">
+        <property name="topMargin">
+         <number>40</number>
+        </property>
+        <property name="bottomMargin">
+         <number>40</number>
+        </property>
         <item row="0" column="1">
          <widget class="QLabel" name="stream">
           <property name="sizePolicy">
@@ -745,6 +754,9 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
           <property name="autoFillBackground">
            <bool>false</bool>
           </property>
+          <property name="styleSheet">
+           <string notr="true">border: 5px solid rgb(175, 171, 155)</string>
+          </property>
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
           </property>
@@ -752,7 +764,7 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
            <enum>QFrame::Plain</enum>
           </property>
           <property name="lineWidth">
-           <number>2</number>
+           <number>5</number>
           </property>
           <property name="midLineWidth">
            <number>1</number>
@@ -789,7 +801,7 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
            <number>0</number>
           </property>
           <property name="bottomMargin">
-           <number>135</number>
+           <number>95</number>
           </property>
           <item>
            <spacer name="horizontalSpacer_10">

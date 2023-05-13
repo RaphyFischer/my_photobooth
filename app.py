@@ -6,6 +6,7 @@ import cv2
 from PIL import Image
 import qrcode
 import numpy as np
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
 from PyQt5.QtGui import QImage, QPixmap, QIcon, QFontDatabase
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -22,6 +23,8 @@ TARGET_DIR = "data/test"
 COUNTDOWN_SECONDS = 5
 COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
 BACKGROUND_IMAGE = "backgrounds/background.png"     # remember to add your custom background image to ui/resources.qrc before specifing it here
+WELCOME_TEXT_COLOR = "rgb(0, 0, 0)"
+IMAGE_BORDER_COLOR = "rgb(175, 171, 155)"
 PREVIEW_TIME_SECONDS = 5
 PRINTER_NAME = "CP400"
 SHOW_COLLAGE = False
@@ -66,7 +69,7 @@ class StreamThread(QThread):
 
     def run(self):
         height, width, channel = 720, 1280, 3
-        scale = 1.2
+        scale = 1.3
         cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
         scaled_width = int(cropped_width*scale)
@@ -171,6 +174,8 @@ class Window(QMainWindow, Ui_MainWindow):
     def refreshWelcomeText(self):
         message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+WELCOME_MESSAGE
         self.welcome_message.setText(message_and_time)
+        self.welcome_message.setStyleSheet(f"color: {WELCOME_TEXT_COLOR};")
+        self.stream.setStyleSheet(f"border: 5px solid {IMAGE_BORDER_COLOR}")
 
     def setRecaptureMode(self):
         # if recapture is activated show home button in photo view else show save button
@@ -180,8 +185,12 @@ class Window(QMainWindow, Ui_MainWindow):
         self.home_button.setIcon(icon)
 
     def overlay_buttons_on_stream(self):
-        self.photo_page_grid.addWidget(self.stream, 0, 0, 0, 0)
-        self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 0, 0)
+        spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        spacer_vert = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.photo_page_grid.addItem(spacer, 0, 0, 0, 1)                                # used to reduce the gap between border and image. Vertical is not working so adjust bottom margin of photo_page
+        self.photo_page_grid.addWidget(self.stream, 0, 1,0,1)
+        self.photo_page_grid.addItem(spacer, 0, 2, 0, 1)
+        self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 1, 1)
 
         if SHOW_BUTTON_TEXT:
             self.home_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -216,6 +225,7 @@ class Window(QMainWindow, Ui_MainWindow):
             file = os.path.join(os.path.dirname(__file__), COUNTDOWN_SOUND)
             subprocess.Popen(["aplay", file])
             self.capture_button.setText(str(secs_left))
+            self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
         elif secs_left == 0:                                # at capture
             self.capture_button.setText("Click")
         elif secs_left < 0:                                 # after capture
@@ -284,6 +294,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont("ui/font/Oxanium-Bold.ttf")
     win = Window()
-    #win.show()
-    win.showFullScreen()
+    win.show()
+    #win.showFullScreen()
     sys.exit(app.exec())
