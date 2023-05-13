@@ -1,0 +1,27 @@
+WELCOME_MESSAGE: "Welcome to our Photobooth"
+BACKGROUND_IMAGE: "backgrounds/Landingpage.png"        # remember to add your custom background image to ui/resources.qrc before specifing it here
+WELCOME_TEXT_COLOR: "rgb(247, 244, 183)"
+IMAGE_BORDER_COLOR: "rgb(247, 244, 183)"
+
+TARGET_DIR: "data/test"
+FILE_PREFIX: ""
+
+COUNTDOWN_TIME_SECONDS: 5
+PREVIEW_TIME_SECONDS: 5
+COUNTDOWN_SOUND: "ui/sounds/countdown_ping.wav"
+
+PRINTER_NAME: "CP400"
+CAMERA_INDEX: list_stream_cameras()
+
+SHOW_COLLAGE: False
+SHOW_FILTER: False
+SHOW_SAVE: True                                       # save button is also back button. So this is always visible
+SHOW_DELETE: True
+SHOW_RECAPTURE: True
+SHOW_PRINT: True
+SHOW_SHARE: True
+SHOW_BUTTON_TEXT: False
+
+WEBSERVER_PORT: 1234
+ACCESS_POINT_SSID: "photobox"
+ACCESS_POINT_PW: "my_photobooth"

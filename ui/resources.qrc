@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="files">
+    <file>icons/shutdown.png</file>
     <file>backgrounds/background.png</file>
     <file>backgrounds/Landingpage.png</file>
     <file>icons/aperature.png</file>

@@ -16,7 +16,7 @@ class SettingsButton(QtWidgets.QPushButton):
         self.setMinimumSize(2000, 2000)
 
     def handleClicked(self):
-        print(self.long_press_duration)
+        #print(self.long_press_duration)
         if self.isDown():
             if self.long_press_duration > 0:
                 self.long_press_duration -= 50
