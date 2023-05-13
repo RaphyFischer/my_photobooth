@@ -7,7 +7,7 @@ from PIL import Image
 import qrcode
 import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
-from PyQt5.QtGui import QImage, QPixmap, QIcon
+from PyQt5.QtGui import QImage, QPixmap, QIcon, QFontDatabase
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -20,13 +20,13 @@ from settings_button import SettingsButton
 WELCOME_MESSAGE = "Welcome to our Photobooth"
 TARGET_DIR = "data/test"
 COUNTDOWN_SECONDS = 5
-COUNTDOWN_SOUND = os.path.join(os.path.dirname(__file__), "ui/sounds/countdown_ping.wav")
+COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
+BACKGROUND_IMAGE = "backgrounds/background.png"     # remember to add your custom background image to ui/resources.qrc before specifing it here
 PREVIEW_TIME_SECONDS = 5
 PRINTER_NAME = "CP400"
-CAMERA_INDEX = list_stream_cameras()
 SHOW_COLLAGE = False
 SHOW_FILTER = False
-SHOW_SAVE = True                            #save button is also back button. So this is always visible
+SHOW_SAVE = True                                    #save button is also back button. So this is always visible
 SHOW_DELETE = True
 SHOW_RECAPTURE = True
 SHOW_SHARE = True
@@ -37,6 +37,7 @@ ACCESS_POINT_SSID = "photobox"
 ACCESS_POINT_PW = "my_photobooth"
 ###
 
+CAMERA_INDEX = list_stream_cameras()
 FILE_NAME = ""                          # holds last filename
 FREEZE_STREAM = False
 proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)
@@ -119,6 +120,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        self.loadBackgroundImage()
         self.refreshWelcomeText()
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
@@ -156,6 +158,16 @@ class Window(QMainWindow, Ui_MainWindow):
         # start web server hosting images
         if SHOW_SHARE: th = ServerThread(self).start()
 
+    def loadBackgroundImage(self):
+        style = "QWidget#start_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %BACKGROUND_IMAGE
+        self.start_page.setStyleSheet(style)
+        style = "QWidget#photo_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %BACKGROUND_IMAGE
+        self.photo_page.setStyleSheet(style)
+        style = "QWidget#download_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %BACKGROUND_IMAGE
+        self.download_page.setStyleSheet(style)
+        style = "QWidget#setup_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %BACKGROUND_IMAGE
+        self.setup_page.setStyleSheet(style)
+
     def refreshWelcomeText(self):
         message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+WELCOME_MESSAGE
         self.welcome_message.setText(message_and_time)
@@ -163,8 +175,8 @@ class Window(QMainWindow, Ui_MainWindow):
     def setRecaptureMode(self):
         # if recapture is activated show home button in photo view else show save button
         icon = QIcon()
-        if SHOW_RECAPTURE:icon.addPixmap(QPixmap(":/images/images/home.png"), QIcon.Normal, QIcon.Off)
-        else: icon.addPixmap(QPixmap(":/images/images/save.png"), QIcon.Normal, QIcon.Off)
+        if SHOW_RECAPTURE:icon.addPixmap(QPixmap(":/files/icons/home.png"), QIcon.Normal, QIcon.Off)
+        else: icon.addPixmap(QPixmap(":/files/icons/save.png"), QIcon.Normal, QIcon.Off)
         self.home_button.setIcon(icon)
 
     def overlay_buttons_on_stream(self):
@@ -201,13 +213,14 @@ class Window(QMainWindow, Ui_MainWindow):
     def updateCountdown(self, secs_left):
         self.capture_button.setIcon(QIcon())
         if secs_left > 0:
-            subprocess.Popen(["aplay", COUNTDOWN_SOUND])
+            file = os.path.join(os.path.dirname(__file__), COUNTDOWN_SOUND)
+            subprocess.Popen(["aplay", file])
             self.capture_button.setText(str(secs_left))
         elif secs_left == 0:                                # at capture
             self.capture_button.setText("Click")
         elif secs_left < 0:                                 # after capture
             self.capture_button.setText("")
-            self.capture_button.setIcon(QIcon(":/images/images/aperature.png"))
+            self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
             self.showImageControlButtons(True)
             self.capture_button.setEnabled(True)      
 

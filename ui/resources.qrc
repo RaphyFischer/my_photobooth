@@ -1,14 +1,13 @@
 <RCC>
-  <qresource prefix="images">
-    <file>images/home.png</file>
-    <file>images/print.png</file>
-    <file>images/remove_image.png</file>
-    <file>images/share.png</file>
-    <file>images/save.png</file>
-    <file>images/background.png</file>
-    <file>images/aperature.png</file>
-  </qresource>
-  <qresource prefix="fonts">
+  <qresource prefix="files">
+    <file>backgrounds/background.png</file>
+    <file>backgrounds/Landingpage.png</file>
+    <file>icons/aperature.png</file>
+    <file>icons/home.png</file>
+    <file>icons/print.png</file>
+    <file>icons/remove_image.png</file>
+    <file>icons/save.png</file>
+    <file>icons/share.png</file>
     <file>font/Oxanium-Bold.ttf</file>
   </qresource>
 </RCC>

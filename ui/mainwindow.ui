@@ -20,7 +20,7 @@
    <string>Photobox</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources.qrc">
+   <iconset>
     <normaloff>:/images/images/aperature.png</normaloff>:/images/images/aperature.png</iconset>
   </property>
   <property name="styleSheet">
@@ -75,6 +75,9 @@
       <property name="autoFillBackground">
        <bool>false</bool>
       </property>
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
       <property name="currentIndex">
        <number>0</number>
       </property>
@@ -87,7 +90,7 @@
        </property>
        <property name="styleSheet">
         <string notr="true">QWidget#start_page{
-border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
+border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -716,7 +719,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
        </property>
        <property name="styleSheet">
         <string notr="true">QWidget#photo_page{
-border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
+border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
        <layout class="QGridLayout" name="photo_page_grid">
@@ -758,7 +761,7 @@ border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
            <string/>
           </property>
           <property name="pixmap">
-           <pixmap resource="resources.qrc">:/images/images/background.png</pixmap>
+           <pixmap resource="resources.qrc">:/files/backgrounds/background.png</pixmap>
           </property>
           <property name="scaledContents">
            <bool>false</bool>
@@ -856,7 +859,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
-              <normaloff>:/images/images/save.png</normaloff>:/images/images/save.png</iconset>
+              <normaloff>:/files/icons/home.png</normaloff>:/files/icons/home.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -924,7 +927,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
-              <normaloff>:/images/images/remove_image.png</normaloff>:/images/images/remove_image.png</iconset>
+              <normaloff>:/files/icons/remove_image.png</normaloff>:/files/icons/remove_image.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -966,7 +969,7 @@ background: qradialgradient(
 cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4,
 radius: 1.35, stop: 0 #F6F5F4, stop: 1 #ED333B
 );
-qproperty-icon: url(:/images/images/aperature.png);
+qproperty-icon: url(:/files/icons/aperature.png);
 }
 
 QPushButton:disabled {
@@ -1065,7 +1068,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
-              <normaloff>:/images/images/share.png</normaloff>:/images/images/share.png</iconset>
+              <normaloff>:/files/icons/share.png</normaloff>:/files/icons/share.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -1142,7 +1145,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
             </property>
             <property name="icon">
              <iconset resource="resources.qrc">
-              <normaloff>:/images/images/print.png</normaloff>:/images/images/print.png</iconset>
+              <normaloff>:/files/icons/print.png</normaloff>:/files/icons/print.png</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -1181,7 +1184,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
        </property>
        <property name="styleSheet">
         <string notr="true">QWidget#download_page{
-border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
+border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
        <layout class="QGridLayout" name="gridLayout">
@@ -1332,7 +1335,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
            <string/>
           </property>
           <property name="icon">
-           <iconset resource="resources.qrc">
+           <iconset>
             <normaloff>:/images/images/home.png</normaloff>:/images/images/home.png</iconset>
           </property>
           <property name="iconSize">
@@ -1354,7 +1357,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
        </property>
        <property name="styleSheet">
         <string notr="true">QWidget#setup_page{
-border-image: url(:/images/images/background.png) 0 0 0 0 stretch stretch;
+border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
       </widget>
