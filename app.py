@@ -38,7 +38,7 @@ class StreamThread(QThread):
 
     def run(self):
         height, width, channel = 720, 1280, 3
-        scale = 1.3
+        scale = 1.6
         cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
         scaled_width = int(cropped_width*scale)

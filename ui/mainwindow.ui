@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1662</width>
-    <height>1061</height>
+    <width>1920</width>
+    <height>1200</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -68,6 +68,12 @@
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
+      </property>
+      <property name="cursor">
+       <cursorShape>ArrowCursor</cursorShape>
+      </property>
+      <property name="contextMenuPolicy">
+       <enum>Qt::NoContextMenu</enum>
       </property>
       <property name="layoutDirection">
        <enum>Qt::LeftToRight</enum>
