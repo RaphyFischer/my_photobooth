@@ -20,8 +20,8 @@
    <string>Photobox</string>
   </property>
   <property name="windowIcon">
-   <iconset>
-    <normaloff>:/images/images/aperature.png</normaloff>:/images/images/aperature.png</iconset>
+   <iconset resource="resources.qrc">
+    <normaloff>:/files/icons/aperature.png</normaloff>:/files/icons/aperature.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true"/>
