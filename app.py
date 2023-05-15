@@ -52,12 +52,17 @@ class StreamThread(QThread):
         while True:
             ret, frame = cap.read()
             if ret:
-                frame = cv2.flip(frame, 1)
+                if not SETTINGS["FREEZE_STREAM"]:
+                    frame = cv2.flip(frame, 1)
+                    frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
+                else:
+                    frame = cv2.imread(SETTINGS["FILE_NAME"])
+                    if frame is None:
+                        continue
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgbImage = rgbImage[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
                 rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
                 convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
-                if not SETTINGS["FREEZE_STREAM"]: self.changePixmap.emit(convertToQtFormat)
+                self.changePixmap.emit(convertToQtFormat)
 
 class CaptureWorker(QObject):
     progress = pyqtSignal(int)
@@ -339,6 +344,6 @@ if __name__ == "__main__":
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
     #win.resize(1920, 1200)
-    #win.show()
-    win.showFullScreen()
+    win.show()
+    #win.showFullScreen()
     sys.exit(app.exec())
