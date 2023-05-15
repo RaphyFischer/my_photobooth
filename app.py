@@ -37,8 +37,8 @@ class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
 
     def run(self):
-        height, width, channel = 720, 1280, 3
-        scale = 1.6
+        height, width, channel = 1080, 1920, 3
+        scale = 0.9
         cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
         scaled_width = int(cropped_width*scale)
@@ -47,6 +47,7 @@ class StreamThread(QThread):
         cap = cv2.VideoCapture(SETTINGS["CAMERA_INDEX"])
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        cap.set(cv2.CAP_PROP_FPS, 25)
 
         while True:
             ret, frame = cap.read()
@@ -337,6 +338,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
-    win.show()
-    #win.showFullScreen()
+    #win.resize(1920, 1200)
+    #win.show()
+    win.showFullScreen()
     sys.exit(app.exec())
