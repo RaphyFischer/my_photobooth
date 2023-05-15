@@ -77,7 +77,7 @@ class CaptureWorker(QObject):
             time.sleep(1)
 
         print('Capturing image')
-        SETTINGS["FILE_NAME"] = os.path.join(os.path.dirname(__file__), SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         self.progress.emit(0)
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
         subprocess.Popen(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite"])
@@ -122,6 +122,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.back_button.clicked.connect(self.homeButtonClicked)
         self.save_setting_button.clicked.connect(self.saveSettings)
         self.shutdown_button.clicked.connect(self.shutdown)
+        self.open_button.clicked.connect(self.openFileDialog)
 
         # start capture worker
         self.worker = CaptureWorker()
@@ -177,21 +178,19 @@ class Window(QMainWindow, Ui_MainWindow):
             self.download_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
             self.print_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
 
-    def settingsClicked(self):
-        print("Go to settings")
-        # init settings view with current values
-        self.lineEdit_welcome_message.setText(SETTINGS["WELCOME_MESSAGE"])
-        self.lineEdit_target_dir.setText(SETTINGS["TARGET_DIR"])
-        self.spinBox_countdown_time.setValue(SETTINGS["COUNTDOWN_TIME_SECONDS"])
-        self.spinBox_preview_time.setValue(SETTINGS["PREVIEW_TIME_SECONDS"])
-        self.checkBox_collage.setChecked(SETTINGS["SHOW_COLLAGE"])
-        self.checkBox_filter.setChecked(SETTINGS["SHOW_FILTER"])
-        self.checkBox_delete.setChecked(SETTINGS["SHOW_DELETE"])
-        self.checkBox_recapture.setChecked(SETTINGS["SHOW_RECAPTURE"])
-        self.checkBox_print.setChecked(SETTINGS["SHOW_PRINT"])
-        self.checkBox_share.setChecked(SETTINGS["SHOW_SHARE"])
-        self.checkBox_button_text.setChecked(SETTINGS["SHOW_BUTTON_TEXT"])
-        self.stackedWidget.setCurrentIndex(3)
+    def showImageControlButtons(self, visible):
+        if visible:                                                     # icon menue is visible
+            self.home_button.setVisible(True)
+            self.delete_button.setVisible(SETTINGS["SHOW_DELETE"])
+            self.capture_button.setVisible(SETTINGS["SHOW_RECAPTURE"])
+            self.download_button.setVisible(SETTINGS["SHOW_SHARE"])
+            self.print_button.setVisible(SETTINGS["SHOW_PRINT"])
+        else:                                                           # capture countdown is running
+            self.capture_button.setVisible(True)
+            self.home_button.setVisible(False)
+            self.delete_button.setVisible(False)
+            self.download_button.setVisible(False)
+            self.print_button.setVisible(False)
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -267,19 +266,26 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.stackedWidget.setCurrentIndex(2)
 
-    def showImageControlButtons(self, visible):
-        if visible:                                                     # icon menue is visible
-            self.home_button.setVisible(True)
-            self.delete_button.setVisible(SETTINGS["SHOW_DELETE"])
-            self.capture_button.setVisible(SETTINGS["SHOW_RECAPTURE"])
-            self.download_button.setVisible(SETTINGS["SHOW_SHARE"])
-            self.print_button.setVisible(SETTINGS["SHOW_PRINT"])
-        else:                                                           # capture countdown is running
-            self.capture_button.setVisible(True)
-            self.home_button.setVisible(False)
-            self.delete_button.setVisible(False)
-            self.download_button.setVisible(False)
-            self.print_button.setVisible(False)
+    def settingsClicked(self):
+        print("Go to settings")
+        # init settings view with current values
+        self.lineEdit_welcome_message.setText(SETTINGS["WELCOME_MESSAGE"])
+        self.lineEdit_target_dir.setText(SETTINGS["TARGET_DIR"])
+        self.spinBox_countdown_time.setValue(SETTINGS["COUNTDOWN_TIME_SECONDS"])
+        self.spinBox_preview_time.setValue(SETTINGS["PREVIEW_TIME_SECONDS"])
+        self.checkBox_collage.setChecked(SETTINGS["SHOW_COLLAGE"])
+        self.checkBox_filter.setChecked(SETTINGS["SHOW_FILTER"])
+        self.checkBox_delete.setChecked(SETTINGS["SHOW_DELETE"])
+        self.checkBox_recapture.setChecked(SETTINGS["SHOW_RECAPTURE"])
+        self.checkBox_print.setChecked(SETTINGS["SHOW_PRINT"])
+        self.checkBox_share.setChecked(SETTINGS["SHOW_SHARE"])
+        self.checkBox_button_text.setChecked(SETTINGS["SHOW_BUTTON_TEXT"])
+        self.stackedWidget.setCurrentIndex(3)
+
+    def openFileDialog(self):
+        folderpath = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Folder')
+        if folderpath:
+            self.lineEdit_target_dir.setText(folderpath)        
 
     def loadSettings(self):
         # load the settings from yaml to globals to use them as variables
@@ -303,7 +309,7 @@ class Window(QMainWindow, Ui_MainWindow):
         except: SETTINGS["WEBSERVER_IP"]="127.0.0.1"
 
         # create the target dir if necessary
-        os.makedirs(os.path.join(os.path.dirname(__file__), SETTINGS["TARGET_DIR"]),exist_ok=True)
+        os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
 
     def saveSettings(self):
         global SETTINGS
@@ -344,6 +350,6 @@ if __name__ == "__main__":
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
     #win.resize(1920, 1200)
-    win.show()
-    #win.showFullScreen()
+    #win.show()
+    win.showFullScreen()
     sys.exit(app.exec())
