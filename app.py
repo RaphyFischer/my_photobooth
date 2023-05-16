@@ -37,8 +37,8 @@ class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
 
     def run(self):
-        height, width, channel = 1080, 1920, 3
-        scale = 0.9
+        height, width, channel = 720, 1280, 3
+        scale = 1.6
         cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
         scaled_width = int(cropped_width*scale)
@@ -53,12 +53,12 @@ class StreamThread(QThread):
             ret, frame = cap.read()
             if ret:
                 if not SETTINGS["FREEZE_STREAM"]:
-                    frame = cv2.flip(frame, 1)
                     frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
                 else:
                     frame = cv2.imread(SETTINGS["FILE_NAME"])
                     if frame is None:
                         continue
+                frame = cv2.flip(frame, 1)
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
                 convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)

@@ -733,10 +733,10 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
        </property>
        <layout class="QGridLayout" name="photo_page_grid">
         <property name="topMargin">
-         <number>109</number>
+         <number>20</number>
         </property>
         <property name="bottomMargin">
-         <number>109</number>
+         <number>24</number>
         </property>
         <item row="0" column="1">
          <widget class="QLabel" name="stream">
