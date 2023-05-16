@@ -91,6 +91,7 @@ class CaptureWorker(QObject):
             time.sleep(0.01)
             preview_countdown -= 0.01
         SETTINGS["FREEZE_STREAM"] = False
+        self.progress.emit(-2)
 
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
@@ -218,11 +219,14 @@ class Window(QMainWindow, Ui_MainWindow):
             self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
         elif secs_left == 0:                                # at capture
             self.capture_button.setText("Click")
-        elif secs_left < 0:                                 # after capture
+        elif secs_left == -1:                                 # after capture
             self.capture_button.setText("")
             self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
             self.showImageControlButtons(True)
-            self.capture_button.setEnabled(True)      
+            self.capture_button.setEnabled(True)
+        elif secs_left == -2:                               # after preview
+            if SETTINGS["SHOW_RECAPTURE"] == False:
+                self.stackedWidget.setCurrentIndex(0)     
 
     def homeButtonClicked(self):
         print("Home Button pressed")
