@@ -205,7 +205,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def captureButtonClicked(self):
         global SETTINGS
-        SETTINGS["FREEZE_STREAM"] = False                       # stops the preview
+        SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
         self.capture_button.setEnabled(False)
         self.showImageControlButtons(False)
         self.work_requested.emit()
@@ -217,19 +217,20 @@ class Window(QMainWindow, Ui_MainWindow):
             subprocess.Popen(["aplay", file])
             self.capture_button.setText(str(secs_left))
             self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
-        elif secs_left == 0:                                # at capture
+        elif secs_left == 0:                                                    # at capture
             self.capture_button.setText("Click")
-        elif secs_left == -1:                                 # after capture
+        elif secs_left < 0:                                                     # after capture
             self.capture_button.setText("")
             self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
             self.showImageControlButtons(True)
             self.capture_button.setEnabled(True)
-        elif secs_left == -2:                               # after preview
-            if SETTINGS["SHOW_RECAPTURE"] == False:
-                self.stackedWidget.setCurrentIndex(0)     
+            if secs_left == -2:                                                 # after preview
+                if SETTINGS["SHOW_RECAPTURE"] == False:
+                    self.stackedWidget.setCurrentIndex(0)     
 
     def homeButtonClicked(self):
         print("Home Button pressed")
+        SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
         self.stackedWidget.setCurrentIndex(0)
     
     def deleteButtonClicked(self):
