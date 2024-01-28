@@ -71,6 +71,9 @@ class CaptureWorker(QObject):
     def run(self):
         global SETTINGS
 
+        # list gphoto config. This helps with loosing connection to some cameras
+        subprocess.Popen(["gphoto2", "--list-config"])
+
         print("Countdown started")
         for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
             self.progress.emit(secs_left)

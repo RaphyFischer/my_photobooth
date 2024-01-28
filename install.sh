@@ -18,6 +18,7 @@ Exec=python $PWD/app.py
 Icon=$PWD/ui/icons/aperature.png
 Type=Application
 Terminal=false
+StartupWMClass=app.py
 EOT
 
 # build qt app
