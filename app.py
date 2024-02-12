@@ -317,7 +317,13 @@ class Window(QMainWindow, Ui_MainWindow):
         except: SETTINGS["WEBSERVER_IP"]="127.0.0.1"
 
         # create the target dir if necessary
-        os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+        try:
+            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+        except PermissionError:
+            print(f"Couldn't create {SETTINGS['TARGET_DIR']}")
+            SETTINGS["TARGET_DIR"] = "photobox/images"
+            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+            print(f"Using {SETTINGS['TARGET_DIR']} instead")
 
     def saveSettings(self):
         global SETTINGS
