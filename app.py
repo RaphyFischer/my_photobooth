@@ -1,4 +1,4 @@
-import sys, os, time, yaml
+import sys, os, time, yaml, json
 from datetime import datetime
 import subprocess
 import functools
@@ -68,6 +68,17 @@ class StreamThread(QThread):
                         continue
                 frame = cv2.flip(frame, 1)
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                if SETTINGS["COLLAGE_TEMPLATE"] is not None:
+                    collageImage = SETTINGS["COLLAGE_TEMPLATE"]
+                    positionInfo = SETTINGS["COLLAGE_POSITIONS"][SETTINGS["COLLAGE_ID"]]
+                    xcenter, ycenter = positionInfo["position"]
+                    width, height = positionInfo["size"]
+                    collageImage[ycenter-int(height/2):ycenter+int(height/2), xcenter-int(width/2):xcenter+int(width/2)] = \
+                        cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
+                    SETTINGS["COLLAGE_TEMPLATE"] = collageImage
+                    rgbImage = collageImage
+
                 rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
                 convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
                 self.changePixmap.emit(convertToQtFormat)
@@ -128,6 +139,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.hidden_settings.longclicked.connect(self.settingsClicked)
         self.start_button.clicked.connect(self.startButtonClicked)
+        self.collage_button.clicked.connect(self.collageButtonClicked)
         self.home_button.clicked.connect(self.homeButtonClicked)
         self.delete_button.clicked.connect(self.deleteButtonClicked)
         self.capture_button.clicked.connect(self.captureButtonClicked)
@@ -137,6 +149,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.save_setting_button.clicked.connect(self.saveSettings)
         self.shutdown_button.clicked.connect(self.shutdown)
         self.open_button.clicked.connect(self.openFileDialog)
+        self.templateListWidget.itemDoubleClicked.connect(self.templateSelected)
 
         # start capture worker
         self.worker = CaptureWorker()
@@ -216,6 +229,40 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(1)
         self.captureButtonClicked()
 
+    def collageButtonClicked(self):
+        print("Start Collage clicked")
+        self.showImageControlButtons(False)
+        self.templateListWidget.clear()
+
+        # read images from collage directory
+        files = os.listdir("ui/collages")
+        for f in files:
+            if f.endswith(".png"):
+                print(f)
+                item = QtWidgets.QListWidgetItem()
+                item.setText(f[:-4])
+                icon = QIcon()
+                icon.addPixmap(QPixmap(os.path.join("ui/collages", f)), QIcon.Normal, QIcon.Off)
+                item.setIcon(icon)
+                self.templateListWidget.addItem(item)
+        self.templateListWidget.setIconSize(QtCore.QSize(600, 400))
+
+        self.stackedWidget.setCurrentIndex(4)
+
+    def templateSelected(self):
+        global SETTINGS
+        print("Template was selected")
+        template_path = os.path.join("ui","collages",self.templateListWidget.selectedItems()[0].text())
+        with open(template_path+"_positions.json") as f:
+            collage_dict = json.load(f)
+            SETTINGS["COLLAGE_TEMPLATE"] = cv2.imread(os.path.join("ui","collages", collage_dict["filename"]))
+            SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
+        SETTINGS["COLLAGE_ID"] = 0
+        self.original_preview_time = SETTINGS["PREVIEW_TIME_SECONDS"]
+        SETTINGS["PREVIEW_TIME_SECONDS"] = 0.5                                    # only short preview during collage
+
+        self.stackedWidget.setCurrentIndex(1)
+
     def captureButtonClicked(self):
         global SETTINGS
         SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
@@ -224,6 +271,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.work_requested.emit()
 
     def updateCountdown(self, secs_left):
+        global SETTINGS
         self.capture_button.setIcon(QIcon())
         if secs_left > 0:
             file = os.path.join(os.path.dirname(__file__), SETTINGS["COUNTDOWN_SOUND"])
@@ -239,7 +287,24 @@ class Window(QMainWindow, Ui_MainWindow):
             self.capture_button.setEnabled(True)
             if secs_left == -2:                                                 # after preview
                 if SETTINGS["SHOW_RECAPTURE"] == False:
-                    self.stackedWidget.setCurrentIndex(0)     
+                    self.stackedWidget.setCurrentIndex(0)
+                if SETTINGS["COLLAGE_ID"] is not None and \
+                    SETTINGS["COLLAGE_ID"]+1 < len(SETTINGS["COLLAGE_POSITIONS"]):
+                    SETTINGS["COLLAGE_ID"] += 1
+                    self.showImageControlButtons(False)
+                elif SETTINGS["COLLAGE_ID"] is not None and \
+                    SETTINGS["COLLAGE_ID"]+1 == len(SETTINGS["COLLAGE_POSITIONS"]):
+                    SETTINGS["FREEZE_STREAM"] = True
+                    self.capture_button.setEnabled(False)
+                    print("Collage Finished")
+                    SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+                    collage = SETTINGS["COLLAGE_TEMPLATE"]
+                    collage = cv2.flip(collage, 1)
+                    collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
+                    cv2.imwrite(SETTINGS["FILE_NAME"], collage)
+                    SETTINGS["COLLAGE_ID"] = None
+                    SETTINGS["COLLAGE_TEMPLATE"] = None
+                    SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
 
     def homeButtonClicked(self):
         print("Home Button pressed")
@@ -318,7 +383,8 @@ class Window(QMainWindow, Ui_MainWindow):
         # init some variables
         SETTINGS["FILE_NAME"] = ""                          # holds last filename
         SETTINGS["FREEZE_STREAM"] = False
-        SETTINGS["CAMERA_INDEX"] = list_stream_cameras()
+        SETTINGS["COLLAGE_TEMPLATE"] = None
+        SETTINGS["COLLAGE_ID"] = None
 
         # search for network adapters
         proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)

@@ -13,8 +13,8 @@ COUNTDOWN_SOUND: "ui/sounds/countdown_ping.wav"
 PRINTER_NAME: "CP400"
 CAMERA_INDEX: list_stream_cameras()
 
-SHOW_COLLAGE: False
-SHOW_FILTER: False
+SHOW_COLLAGE: True
+SHOW_FILTER: True
 SHOW_SAVE: True                                       # save button is also back button. So this is always visible
 SHOW_DELETE: True
 SHOW_RECAPTURE: True

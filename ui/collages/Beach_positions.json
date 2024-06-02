@@ -1,0 +1,8 @@
+{
+    "filename": "Beach.png",
+    "images": [
+        {"id": 0, "position": [1500, 440], "size": [780, 520]}, 
+        {"id": 1, "position": [547, 1200], "size": [780, 520]}, 
+        {"id": 2, "position": [1500, 1200], "size": [780, 520]}
+    ]
+}
