@@ -20,6 +20,14 @@ from settings_button import SettingsButton
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
 SETTINGS = {}
 
+def switch_canon_to_liveview():
+    # canon eos m3 goes to picture playback on usb connect and after taking images
+    # this function resets it to shooting mode/liveview
+    # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
+    p =subprocess.Popen(["gphoto2", "--stdout", "--capture-movie"])
+    time.sleep(0.2)
+    p.kill()
+
 class ServerThread(QThread):
     def run(self):
         '''
@@ -71,8 +79,8 @@ class CaptureWorker(QObject):
     def run(self):
         global SETTINGS
 
-        # list gphoto config. This helps with loosing connection to some cameras
-        subprocess.Popen(["gphoto2", "--list-config"])
+        # switch canon from image playback to liveview
+        switch_canon_to_liveview()
 
         print("Countdown started")
         for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
@@ -83,9 +91,11 @@ class CaptureWorker(QObject):
         SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         self.progress.emit(0)
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
-        subprocess.Popen(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite"])
-        time.sleep(0.2)
+        subprocess.call(["gphoto2", "--reset"])
+        subprocess.call(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
         self.progress.emit(-1)
+
+        switch_canon_to_liveview()
 
         print('Showing preview')
         SETTINGS["FREEZE_STREAM"] = True
