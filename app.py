@@ -59,29 +59,31 @@ class StreamThread(QThread):
 
         while True:
             ret, frame = cap.read()
-            if ret:
-                if not SETTINGS["FREEZE_STREAM"]:
-                    frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
-                else:
-                    frame = cv2.imread(SETTINGS["FILE_NAME"])
-                    if frame is None:
-                        continue
-                frame = cv2.flip(frame, 1)
-                rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if not ret:
+                continue
 
-                if SETTINGS["COLLAGE_TEMPLATE"] is not None:
-                    collageImage = SETTINGS["COLLAGE_TEMPLATE"]
-                    positionInfo = SETTINGS["COLLAGE_POSITIONS"][SETTINGS["COLLAGE_ID"]]
-                    xcenter, ycenter = positionInfo["position"]
-                    width, height = positionInfo["size"]
-                    collageImage[ycenter-int(height/2):ycenter+int(height/2), xcenter-int(width/2):xcenter+int(width/2)] = \
-                        cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
-                    SETTINGS["COLLAGE_TEMPLATE"] = collageImage
-                    rgbImage = collageImage
+            if not SETTINGS["FREEZE_STREAM"]:
+                frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
+            else:
+                frame = cv2.imread(SETTINGS["FILE_NAME"])
+                if frame is None:
+                    continue
+            frame = cv2.flip(frame, 1)
+            rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
-                convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
-                self.changePixmap.emit(convertToQtFormat)
+            if SETTINGS["COLLAGE_TEMPLATE"] is not None:
+                collageImage = SETTINGS["COLLAGE_TEMPLATE"]
+                positionInfo = SETTINGS["COLLAGE_POSITIONS"][SETTINGS["COLLAGE_ID"]]
+                xcenter, ycenter = positionInfo["position"]
+                w, h = positionInfo["size"]
+                collageImage[ycenter-int(h/2):ycenter+int(h/2), xcenter-int(w/2):xcenter+int(w/2)] = \
+                    cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
+                SETTINGS["COLLAGE_TEMPLATE"] = collageImage
+                rgbImage = collageImage
+
+            rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
+            convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
+            self.changePixmap.emit(convertToQtFormat)
 
 class CaptureWorker(QObject):
     progress = pyqtSignal(int)
@@ -218,6 +220,7 @@ class Window(QMainWindow, Ui_MainWindow):
             self.delete_button.setVisible(False)
             self.download_button.setVisible(False)
             self.print_button.setVisible(False)
+        self.capture_button.setEnabled(True)
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -255,11 +258,13 @@ class Window(QMainWindow, Ui_MainWindow):
         template_path = os.path.join("ui","collages",self.templateListWidget.selectedItems()[0].text())
         with open(template_path+"_positions.json") as f:
             collage_dict = json.load(f)
-            SETTINGS["COLLAGE_TEMPLATE"] = cv2.imread(os.path.join("ui","collages", collage_dict["filename"]))
+            template = cv2.imread(os.path.join("ui","collages", collage_dict["filename"]))
+            template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
+            SETTINGS["COLLAGE_TEMPLATE"] = template
             SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
         SETTINGS["COLLAGE_ID"] = 0
         self.original_preview_time = SETTINGS["PREVIEW_TIME_SECONDS"]
-        SETTINGS["PREVIEW_TIME_SECONDS"] = 0.5                                    # only short preview during collage
+        SETTINGS["PREVIEW_TIME_SECONDS"] = 1                                    # only short preview during collage
 
         self.stackedWidget.setCurrentIndex(1)
 
