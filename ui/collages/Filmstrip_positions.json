@@ -1,0 +1,10 @@
+{
+    "filename": "Filmstrip.png",
+    "images": [
+        {"id": 0, "position": [1025, 853], "size": [900, 600]}, 
+        {"id": 1, "position": [1025, 1530], "size": [900, 600]}, 
+        {"id": 2, "position": [1025, 2205], "size": [900, 600]},
+        {"id": 3, "position": [3065, 537], "size": [1500, 1000]},
+        {"id": 4, "position": [3065, 1650], "size": [1500, 1000]}
+    ]
+}
