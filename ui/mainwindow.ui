@@ -632,9 +632,9 @@ radius: 1.35, stop: 0 #FF0000, stop: 1 #FF0000
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="filters_button">
+             <widget class="QPushButton" name="challenge_button">
               <property name="enabled">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
@@ -693,7 +693,7 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 }</string>
               </property>
               <property name="text">
-               <string>Filter</string>
+               <string>Challenge</string>
               </property>
              </widget>
             </item>

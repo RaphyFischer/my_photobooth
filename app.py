@@ -1,9 +1,9 @@
-import sys, os, time, yaml, json
+import sys, os, time, yaml, json, random
 from datetime import datetime
 import subprocess
 import functools
 import cv2
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 import qrcode
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
@@ -68,6 +68,9 @@ class StreamThread(QThread):
                 frame = cv2.imread(SETTINGS["FILE_NAME"])
                 if frame is None:
                     continue
+                # collages are saved "unflipped"! -> Flip twice here
+                if "collage" in SETTINGS["FILE_NAME"]:
+                    frame = cv2.flip(frame, 1)
             frame = cv2.flip(frame, 1)
             rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -80,6 +83,25 @@ class StreamThread(QThread):
                     cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
                 SETTINGS["COLLAGE_TEMPLATE"] = collageImage
                 rgbImage = collageImage
+
+            if SETTINGS["CHALLENGE"] is not None:
+                pil_image = Image.fromarray(rgbImage)
+                draw = ImageDraw.Draw(pil_image, "RGBA")
+
+                font = ImageFont.truetype("ui/font/Oxanium-Bold.ttf", 30)
+                position = (int(cropped_width/2), 90)
+                if " - "in SETTINGS["CHALLENGE"]:
+                    title, text = SETTINGS["CHALLENGE"].split(" - ")
+                else:
+                    title, text = "", SETTINGS["CHALLENGE"]
+                text = f"Deine Challenge: {title} -\n{text}"
+
+                left, top, right, bottom = draw.textbbox(position, text, font=font, anchor="mm")
+                draw.rectangle((left-5, top-25, right+5, bottom+5), fill=(0,0,0,127))
+                draw.text(position, text, font=font, fill=(247, 244, 183, 255), anchor="mm")
+
+                # Convert back to Numpy array and switch back from RGB to BGR
+                rgbImage = np.asarray(pil_image)
 
             rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
             convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
@@ -102,10 +124,13 @@ class CaptureWorker(QObject):
 
         print('Capturing image')
         SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        if SETTINGS["CHALLENGE"] is not None:
+            SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
         self.progress.emit(0)
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
         subprocess.call(["gphoto2", "--reset"])
-        subprocess.call(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        time.sleep(0.1)
+        subprocess.call(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
         self.progress.emit(-1)
 
         switch_canon_to_liveview()
@@ -132,7 +157,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.overlay_buttons_on_stream()
         self.hidden_settings = SettingsButton(self.welcome_message)
         self.collage_button.setVisible(SETTINGS["SHOW_COLLAGE"])
-        self.filters_button.setVisible(SETTINGS["SHOW_FILTER"])
+        self.challenge_button.setVisible(SETTINGS["SHOW_CHALLENGE"])
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
@@ -142,6 +167,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.hidden_settings.longclicked.connect(self.settingsClicked)
         self.start_button.clicked.connect(self.startButtonClicked)
         self.collage_button.clicked.connect(self.collageButtonClicked)
+        self.challenge_button.clicked.connect(self.challengeButtonClicked)
         self.home_button.clicked.connect(self.homeButtonClicked)
         self.delete_button.clicked.connect(self.deleteButtonClicked)
         self.capture_button.clicked.connect(self.captureButtonClicked)
@@ -234,14 +260,12 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def collageButtonClicked(self):
         print("Start Collage clicked")
-        self.showImageControlButtons(False)
         self.templateListWidget.clear()
 
         # read images from collage directory
         files = os.listdir("ui/collages")
         for f in files:
             if f.endswith(".png"):
-                print(f)
                 item = QtWidgets.QListWidgetItem()
                 item.setText(f[:-4])
                 icon = QIcon()
@@ -251,6 +275,17 @@ class Window(QMainWindow, Ui_MainWindow):
         self.templateListWidget.setIconSize(QtCore.QSize(600, 400))
 
         self.stackedWidget.setCurrentIndex(4)
+
+    def challengeButtonClicked(self):
+        print("Start Challenge clicked")
+        with open("challenges.txt") as f:
+            lines = f.readlines()
+        SETTINGS["CHALLENGE"] = random.choice(lines)
+        SETTINGS["CHALLENGE_ACCEPTED"] = False
+        print(SETTINGS["CHALLENGE"])
+
+        self.showImageControlButtons(False)
+        self.stackedWidget.setCurrentIndex(1)
 
     def templateSelected(self):
         global SETTINGS
@@ -264,15 +299,16 @@ class Window(QMainWindow, Ui_MainWindow):
             SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
         SETTINGS["COLLAGE_ID"] = 0
         self.original_preview_time = SETTINGS["PREVIEW_TIME_SECONDS"]
-        SETTINGS["PREVIEW_TIME_SECONDS"] = 1                                    # only short preview during collage
+        SETTINGS["PREVIEW_TIME_SECONDS"] = 0.7                                    # only short preview during collage
 
+        self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
 
     def captureButtonClicked(self):
         global SETTINGS
         SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
-        self.capture_button.setEnabled(False)
         self.showImageControlButtons(False)
+        self.capture_button.setEnabled(False)
         self.work_requested.emit()
 
     def updateCountdown(self, secs_left):
@@ -289,7 +325,6 @@ class Window(QMainWindow, Ui_MainWindow):
             self.capture_button.setText("")
             self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
             self.showImageControlButtons(True)
-            self.capture_button.setEnabled(True)
             if secs_left == -2:                                                 # after preview
                 if SETTINGS["SHOW_RECAPTURE"] == False:
                     self.stackedWidget.setCurrentIndex(0)
@@ -302,9 +337,8 @@ class Window(QMainWindow, Ui_MainWindow):
                     SETTINGS["FREEZE_STREAM"] = True
                     self.capture_button.setEnabled(False)
                     print("Collage Finished")
-                    SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+                    SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
                     collage = SETTINGS["COLLAGE_TEMPLATE"]
-                    collage = cv2.flip(collage, 1)
                     collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(SETTINGS["FILE_NAME"], collage)
                     SETTINGS["COLLAGE_ID"] = None
@@ -314,6 +348,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def homeButtonClicked(self):
         print("Home Button pressed")
         SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
+        SETTINGS["CHALLENGE"] = None
         self.stackedWidget.setCurrentIndex(0)
     
     def deleteButtonClicked(self):
@@ -362,7 +397,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.spinBox_countdown_time.setValue(SETTINGS["COUNTDOWN_TIME_SECONDS"])
         self.spinBox_preview_time.setValue(SETTINGS["PREVIEW_TIME_SECONDS"])
         self.checkBox_collage.setChecked(SETTINGS["SHOW_COLLAGE"])
-        self.checkBox_filter.setChecked(SETTINGS["SHOW_FILTER"])
+        self.checkBox_filter.setChecked(SETTINGS["SHOW_CHALLENGE"])
         self.checkBox_delete.setChecked(SETTINGS["SHOW_DELETE"])
         self.checkBox_recapture.setChecked(SETTINGS["SHOW_RECAPTURE"])
         self.checkBox_print.setChecked(SETTINGS["SHOW_PRINT"])
@@ -390,6 +425,7 @@ class Window(QMainWindow, Ui_MainWindow):
         SETTINGS["FREEZE_STREAM"] = False
         SETTINGS["COLLAGE_TEMPLATE"] = None
         SETTINGS["COLLAGE_ID"] = None
+        SETTINGS["CHALLENGE"] = None
 
         # search for network adapters
         proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)
@@ -414,7 +450,7 @@ class Window(QMainWindow, Ui_MainWindow):
         SETTINGS["COUNTDOWN_TIME_SECONDS"] = self.spinBox_countdown_time.value()
         SETTINGS["PREVIEW_TIME_SECONDS"] = self.spinBox_preview_time.value()
         SETTINGS["SHOW_COLLAGE"] = self.checkBox_collage.isChecked()
-        SETTINGS["SHOW_FILTER"] = self.checkBox_filter.isChecked()
+        SETTINGS["SHOW_CHALLENGE"] = self.checkBox_filter.isChecked()
         SETTINGS["SHOW_DELETE"] = self.checkBox_delete.isChecked()
         SETTINGS["SHOW_RECAPTURE"] = self.checkBox_recapture.isChecked()
         SETTINGS["SHOW_PRINT"] = self.checkBox_print.isChecked()
@@ -433,7 +469,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
         self.collage_button.setVisible(SETTINGS["SHOW_COLLAGE"])
-        self.filters_button.setVisible(SETTINGS["SHOW_FILTER"])
+        self.challenge_button.setVisible(SETTINGS["SHOW_CHALLENGE"])
         self.stackedWidget.setCurrentIndex(0)
 
     def shutdown(self):
