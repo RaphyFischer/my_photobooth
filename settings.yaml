@@ -3,7 +3,7 @@ BACKGROUND_IMAGE: "backgrounds/Landingpage.png"        # remember to add your cu
 WELCOME_TEXT_COLOR: "rgb(247, 244, 183)"
 IMAGE_BORDER_COLOR: "rgb(247, 244, 183)"
 
-TARGET_DIR: "photobox/images"
+TARGET_DIR: "data/images"
 FILE_PREFIX: ""
 
 COUNTDOWN_TIME_SECONDS: 5

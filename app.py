@@ -436,12 +436,6 @@ class Window(QMainWindow, Ui_MainWindow):
         SETTINGS["COLLAGE_ID"] = None
         SETTINGS["CHALLENGE"] = None
 
-        # search for network adapters
-        proc = subprocess.run('echo /sys/class/net/*/wireless | awk -F"/" "{ print \$5 }"', shell=True, stdout = subprocess.PIPE)
-        SETTINGS["WEBSERVER_DEVICE"] = proc.stdout.decode("utf8").rstrip("\n")
-        try: SETTINGS["WEBSERVER_IP"] = ni.ifaddresses(SETTINGS["WEBSERVER_DEVICE"])[ni.AF_INET][0]['addr']
-        except: SETTINGS["WEBSERVER_IP"]="127.0.0.1"
-
         # create the target dir if necessary
         try:
             os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
