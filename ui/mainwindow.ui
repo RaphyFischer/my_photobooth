@@ -1205,56 +1205,42 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
 border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
 }</string>
        </property>
-       <layout class="QGridLayout" name="gridLayout">
-        <property name="bottomMargin">
-         <number>135</number>
-        </property>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
         <property name="spacing">
          <number>20</number>
         </property>
-        <item row="0" column="0">
-         <widget class="QLabel" name="instructions_step1">
-          <property name="minimumSize">
-           <size>
-            <width>600</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="autoFillBackground">
-           <bool>false</bool>
+        <property name="leftMargin">
+         <number>200</number>
+        </property>
+        <property name="topMargin">
+         <number>100</number>
+        </property>
+        <property name="rightMargin">
+         <number>200</number>
+        </property>
+        <property name="bottomMargin">
+         <number>100</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="instructions">
+          <property name="font">
+           <font>
+            <family>Oxanium</family>
+            <pointsize>50</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
           </property>
           <property name="styleSheet">
-           <string notr="true">background-color: rgb(246, 245, 244);</string>
+           <string notr="true">color: rgb(247, 244, 183);</string>
           </property>
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:26pt; font-weight:600;&quot;&gt;Schritt 1:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Verbinden Sie das Gerät mit dem Wifi Hotspot&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;SSID: &lt;/span&gt;&lt;span style=&quot; font-size:18pt; font-weight:600;&quot;&gt;photobox&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Passwort: &lt;/span&gt;&lt;span style=&quot; font-family:'Droid Sans Mono','monospace','monospace'; font-size:18pt; font-weight:600; color:#000000;&quot;&gt;my_photobooth&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="margin">
-           <number>20</number>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:20pt;&quot;&gt;Download wird vorbereitet....&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:20pt;&quot;&gt;Bitte QR-Code scannen!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QLabel" name="instructions_step2">
-          <property name="minimumSize">
-           <size>
-            <width>600</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="autoFillBackground">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:26pt; font-weight:600;&quot;&gt;Schritt2:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Scannen Sie den QR-Code&lt;br/&gt;um das Bild auf Ihrem Handy herunterzuladen&lt;br/&gt;(lange gedrückt halten -&amp;gt; Bild speichern)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="margin">
-           <number>20</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="qr_code1">
+        <item>
+         <widget class="QLabel" name="qr_code">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -1268,33 +1254,14 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
            </size>
           </property>
           <property name="text">
-           <string>QR Code 1</string>
+           <string/>
           </property>
           <property name="scaledContents">
            <bool>false</bool>
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="qr_code2">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>200</width>
-            <height>200</height>
-           </size>
-          </property>
-          <property name="text">
-           <string>QR Code 2</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
+        <item>
          <widget class="QPushButton" name="back_button">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1800,16 +1767,19 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
           <property name="maximumSize">
            <size>
             <width>16777215</width>
-            <height>40</height>
+            <height>16777215</height>
            </size>
           </property>
           <property name="font">
            <font>
-            <family>Ubuntu</family>
-            <pointsize>17</pointsize>
+            <family>Oxanium</family>
+            <pointsize>30</pointsize>
             <weight>75</weight>
             <bold>true</bold>
            </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: rgb(247, 244, 183);</string>
           </property>
           <property name="text">
            <string>Vorlage durch Doppelklick auswählen:</string>

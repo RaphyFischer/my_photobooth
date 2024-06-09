@@ -1,19 +1,16 @@
 import sys, os, time, yaml, json, random
 from datetime import datetime
 import subprocess
-import functools
 import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
-from PyQt5.QtGui import QImage, QPixmap, QIcon, QFontDatabase
+from PyQt5.QtGui import QImage, QMovie, QPixmap, QIcon, QFontDatabase, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-from PyAccessPoint import pyaccesspoint
-import netifaces as ni
+import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
 
@@ -28,18 +25,32 @@ def switch_canon_to_liveview():
     time.sleep(0.2)
     p.kill()
 
-class ServerThread(QThread):
-    def run(self):
-        '''
-        print("Creating access point")
-        access_point = pyaccesspoint.AccessPoint(wlan=SETTINGS["WEBSERVER_DEVICE"], ssid=SETTINGS["ACCESS_POINT_SSID"], password=SETTINGS["ACCESS_POINT_PW"])
-        access_point.start()
-        '''
+class UploadThread(QThread):
+    changePixmap = pyqtSignal(QImage)
 
-        print("Hosting Webserver on %s:%s" %(SETTINGS["WEBSERVER_IP"], SETTINGS["WEBSERVER_PORT"]))
-        MyHandler = functools.partial(SimpleHTTPRequestHandler, directory=SETTINGS["TARGET_DIR"])
-        httpd = HTTPServer((SETTINGS["WEBSERVER_IP"], SETTINGS["WEBSERVER_PORT"]), MyHandler)
-        httpd.serve_forever()
+    def run(self):
+        # share file via link
+        try:
+            file_id = share_gdrive.upload_image(SETTINGS["FILE_NAME"])
+            link = share_gdrive.share_image(file_id)
+            print(f"Image uploaded to {link}")
+
+            # create qr code for image
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(link)
+            qr.make(fit=True)
+
+            img = qr.make_image(fill_color=(247, 244, 183), back_color=(42, 49, 65))
+            img = np.array(img.resize((600,600), Image.NEAREST))
+            qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
+            self.changePixmap.emit(qt_img)
+        except:
+            print("Upload failed")
 
 class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -132,9 +143,7 @@ class CaptureWorker(QObject):
         time.sleep(0.1)
         subprocess.call(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
         self.progress.emit(-1)
-
-        switch_canon_to_liveview()
-
+        
         print('Showing preview')
         SETTINGS["FREEZE_STREAM"] = True
         preview_countdown = SETTINGS["PREVIEW_TIME_SECONDS"]
@@ -143,6 +152,8 @@ class CaptureWorker(QObject):
             preview_countdown -= 0.01
         SETTINGS["FREEZE_STREAM"] = False
         self.progress.emit(-2)
+
+        switch_canon_to_liveview()
 
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
@@ -193,8 +204,8 @@ class Window(QMainWindow, Ui_MainWindow):
         th.start()
 
         # start web server hosting images
-        #if SETTINGS["SHOW_SHARE"]:
-        th = ServerThread(self).start()
+        if SETTINGS["SHOW_SHARE"]:
+            share_gdrive.get_credentials()
 
     def loadBackgroundImage(self):
         style = "QWidget#start_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
@@ -205,6 +216,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.download_page.setStyleSheet(style)
         style = "QWidget#setup_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
         self.setup_page.setStyleSheet(style)
+        style = "QWidget#collage_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        self.collage_page.setStyleSheet(style)
 
     def refreshWelcomeText(self):
         message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+SETTINGS["WELCOME_MESSAGE"]
@@ -268,11 +281,12 @@ class Window(QMainWindow, Ui_MainWindow):
             if f.endswith(".png"):
                 item = QtWidgets.QListWidgetItem()
                 item.setText(f[:-4])
+                item.setForeground(QColor(247, 244, 183))
                 icon = QIcon()
                 icon.addPixmap(QPixmap(os.path.join("ui/collages", f)), QIcon.Normal, QIcon.Off)
                 item.setIcon(icon)
                 self.templateListWidget.addItem(item)
-        self.templateListWidget.setIconSize(QtCore.QSize(600, 400))
+        self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
 
         self.stackedWidget.setCurrentIndex(4)
 
@@ -364,30 +378,25 @@ class Window(QMainWindow, Ui_MainWindow):
         print("Printing photo")
         subprocess.Popen(["lpr", "-P", SETTINGS["PRINTER_NAME"], SETTINGS["FILE_NAME"]])
 
+    @pyqtSlot(QImage)
+    def insertQRCode(self, image):
+        self.qr_code.setPixmap(QPixmap.fromImage(image))
+        self.instructions.setText("Bitte QR-Code scannen")
+
     def downloadButtonClicked(self):
         print("Switch to download site")
-
-        # create first qr code with wifi login
-        text = '<html><head/><body><p><span style=" font-size:26pt; font-weight:600;">Schritt 1:</span></p><p><span style=" font-size:18pt;">Verbinden Sie das Gerät mit dem Wifi Hotspot</span></p><p><span style=" font-size:18pt;">SSID: </span><span style=" font-size:18pt; font-weight:600;">%s</span></p><p><span style=" font-size:18pt;">Passwort: </span><span style=" font-size:18pt; font-weight:600; color:#000000;">%s</span></p></body></html>' %(SETTINGS["ACCESS_POINT_SSID"], SETTINGS["ACCESS_POINT_PW"])
-        self.instructions_step1.setText(text)
-        self.instructions_step1.setMargin(20)
-        wifi = "WIFI:S:%s;T:WPA;P:%s;;" %(SETTINGS["ACCESS_POINT_SSID"], SETTINGS["ACCESS_POINT_PW"])
-        img = np.array(qrcode.make(wifi).resize((600,600), Image.NEAREST))
-        img = np.stack((img,)*3, axis=-1)
-        qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
-        self.qr_code1.setPixmap(QPixmap.fromImage(qt_img))
-
-        # create second qr code with image url
-        text = '<html><head/><body><p><span style=" font-size:26pt; font-weight:600;">Schritt2:</span></p><p><span style=" font-size:18pt;">Scannen Sie den QR-Code<br/>um das Bild auf Ihrem Handy herunterzuladen<br/>(lange gedrückt halten -&gt; Bild speichern)</span></p></body></html>'
-        self.instructions_step2.setText(text)
-        self.instructions_step2.setMargin(20)
-        url = 'http://%s:%s/%s' %(SETTINGS["WEBSERVER_IP"], SETTINGS["WEBSERVER_PORT"], SETTINGS["FILE_NAME"].split("/")[-1])
-        img = np.array(qrcode.make(url).resize((600,600), Image.NEAREST))
-        img = np.stack((img,)*3, axis=-1)
-        qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
-        self.qr_code2.setPixmap(QPixmap.fromImage(qt_img))
-
         self.stackedWidget.setCurrentIndex(2)
+        
+        # set loading spinner
+        self.instructions.setText("Download wird vorbereitet...\nBitte warten")
+        self.qr_code.clear()
+        #movie = QMovie("ui/icons/spinner.gif")
+        #self.qr_code.setMovie(movie)
+        #movie.start()
+
+        th = UploadThread(self)
+        th.changePixmap.connect(self.insertQRCode)
+        th.start()
 
     def settingsClicked(self):
         print("Go to settings")
