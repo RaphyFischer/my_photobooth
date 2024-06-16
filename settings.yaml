@@ -11,7 +11,7 @@ PREVIEW_TIME_SECONDS: 10
 COUNTDOWN_SOUND: "ui/sounds/countdown_ping.wav"
 
 PRINTER_NAME: "CP400"
-CAMERA_INDEX: list_stream_cameras()
+CAMERA_INDEX: 2                                       # this is the number of your video input /dev/videoX. You can get this via v4l2-ctl --list-devices
 
 SHOW_COLLAGE: True
 SHOW_CHALLENGE: True

@@ -29,17 +29,20 @@ def get_token():
 
 def get_credentials():
     global SERVICE
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    token_path = os.path.join(dir_path, "token.json")
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+
+        # If there are no (valid) credentials available, let the user log in.
+        if creds.expired and creds.refresh_token:
+            print("WARNING: Your Credentials are expired or invalid. Please Login again.")
+            creds.refresh(Request())
+
+        # create drive api client
+        SERVICE = build("drive", "v3", credentials=creds)
     else:
         print("WARNING: Please run share_gdrive.py to generate a token.json from your credentials.json if you want to use the share function")
-
-    # If there are no (valid) credentials available, let the user log in.
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-
-    # create drive api client
-    SERVICE = build("drive", "v3", credentials=creds)
 
 def upload_image(image_path):
     # https://developers.google.com/drive/api/guides/manage-uploads#multipart
