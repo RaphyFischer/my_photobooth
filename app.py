@@ -276,14 +276,16 @@ class Window(QMainWindow, Ui_MainWindow):
         self.templateListWidget.clear()
 
         # read images from collage directory
-        files = os.listdir("ui/collages")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        collages_path = os.path.join(dir_path, "ui", "collages")
+        files = os.listdir(collages_path)
         for f in files:
             if f.endswith(".png"):
                 item = QtWidgets.QListWidgetItem()
                 item.setText(f[:-4])
                 item.setForeground(QColor(247, 244, 183))
                 icon = QIcon()
-                icon.addPixmap(QPixmap(os.path.join("ui/collages", f)), QIcon.Normal, QIcon.Off)
+                icon.addPixmap(QPixmap(os.path.join(collages_path, f)), QIcon.Normal, QIcon.Off)
                 item.setIcon(icon)
                 self.templateListWidget.addItem(item)
         self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
@@ -292,7 +294,9 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def challengeButtonClicked(self):
         print("Start Challenge clicked")
-        with open("challenges.txt") as f:
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        challenges_path = os.path.join(dir_path, "challenges.txt")
+        with open(challenges_path) as f:
             lines = f.readlines()
         SETTINGS["CHALLENGE"] = random.choice(lines)
         SETTINGS["CHALLENGE_ACCEPTED"] = False
@@ -304,10 +308,11 @@ class Window(QMainWindow, Ui_MainWindow):
     def templateSelected(self):
         global SETTINGS
         print("Template was selected")
-        template_path = os.path.join("ui","collages",self.templateListWidget.selectedItems()[0].text())
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        template_path = os.path.join(dir_path, "ui","collages",self.templateListWidget.selectedItems()[0].text())
         with open(template_path+"_positions.json") as f:
             collage_dict = json.load(f)
-            template = cv2.imread(os.path.join("ui","collages", collage_dict["filename"]))
+            template = cv2.imread(os.path.join(dir_path, "ui","collages", collage_dict["filename"]))
             template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
             SETTINGS["COLLAGE_TEMPLATE"] = template
             SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
