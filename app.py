@@ -25,8 +25,8 @@ def switch_canon_to_liveview():
     # canon eos m3 goes to picture playback on usb connect and after taking images
     # this function resets it to shooting mode/liveview
     # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
-    p =subprocess.Popen(["gphoto2", "--stdout", "--capture-movie"])
-    time.sleep(0.2)
+    p =subprocess.Popen(["gphoto2", "--capture-movie", "--stdout"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    time.sleep(0.7)
     p.kill()
 
 class UploadThread(QThread):
@@ -79,13 +79,13 @@ class StreamThread(QThread):
 
             if not SETTINGS["FREEZE_STREAM"]:
                 frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
-            else:
+            elif os.path.isfile(SETTINGS["FILE_NAME"]):
                 frame = cv2.imread(SETTINGS["FILE_NAME"])
-                if frame is None:
-                    continue
                 # collages are saved "unflipped"! -> Flip twice here
                 if "collage" in SETTINGS["FILE_NAME"]:
                     frame = cv2.flip(frame, 1)
+            else:
+                continue
             frame = cv2.flip(frame, 1)
             rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -100,15 +100,16 @@ class StreamThread(QThread):
                 rgbImage = collageImage
 
             if SETTINGS["CHALLENGE"] is not None:
+                chal = SETTINGS["CHALLENGE"]
                 pil_image = Image.fromarray(rgbImage)
                 draw = ImageDraw.Draw(pil_image, "RGBA")
 
-                font = ImageFont.truetype("ui/font/Oxanium-Bold.ttf", 30)
+                font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"), 30)
                 position = (int(cropped_width/2), 90)
-                if " - "in SETTINGS["CHALLENGE"]:
-                    title, text = SETTINGS["CHALLENGE"].split(" - ")
+                if " - "in chal:
+                    title, text = chal.split(" - ")
                 else:
-                    title, text = "", SETTINGS["CHALLENGE"]
+                    title, text = "", chal
                 text = f"Deine Challenge: {title} -\n{text}"
 
                 left, top, right, bottom = draw.textbbox(position, text, font=font, anchor="mm")
@@ -129,10 +130,8 @@ class CaptureWorker(QObject):
     def run(self):
         global SETTINGS
 
-        # switch canon from image playback to liveview
-        switch_canon_to_liveview()
-
         print("Countdown started")
+        subprocess.Popen(["gphoto2", "--reset"])
         for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
             self.progress.emit(secs_left)
             time.sleep(1)
@@ -141,23 +140,30 @@ class CaptureWorker(QObject):
         SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         if SETTINGS["CHALLENGE"] is not None:
             SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
-        self.progress.emit(0)
+
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
-        subprocess.call(["gphoto2", "--reset"])
-        time.sleep(0.1)
-        subprocess.call(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        subprocess.Popen(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        
+        # send 0 for "click"
+        time.sleep(0.75)
+        self.progress.emit(0)
+        SETTINGS["FREEZE_STREAM"] = True
+        
+        # wait for image to transfer from camera to device
+        while not os.path.isfile(SETTINGS["FILE_NAME"]):
+            time.sleep(0.2)
+
+        # and -1 for shutter icon
         self.progress.emit(-1)
         
         print('Showing preview')
-        SETTINGS["FREEZE_STREAM"] = True
         preview_countdown = SETTINGS["PREVIEW_TIME_SECONDS"]
         while preview_countdown > 0 and SETTINGS["FREEZE_STREAM"]:
-            time.sleep(0.01)
-            preview_countdown -= 0.01
+            time.sleep(0.2)
+            preview_countdown -= 0.2
+        switch_canon_to_liveview()
         SETTINGS["FREEZE_STREAM"] = False
         self.progress.emit(-2)
-
-        switch_canon_to_liveview()
 
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
@@ -167,6 +173,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.loadSettings()
         self.setupUi(self)
         self.loadBackgroundImage()
+        self.loadCollageImages()
         self.refreshWelcomeText()
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
@@ -275,13 +282,15 @@ class Window(QMainWindow, Ui_MainWindow):
             self.capture_button.setVisible(SETTINGS["SHOW_RECAPTURE"])
             self.download_button.setVisible(SETTINGS["SHOW_SHARE"])
             self.print_button.setVisible(SETTINGS["SHOW_PRINT"])
+            self.capture_button.setEnabled(True)
         else:                                                           # capture countdown is running
             self.capture_button.setVisible(True)
             self.home_button.setVisible(False)
             self.delete_button.setVisible(False)
             self.download_button.setVisible(False)
             self.print_button.setVisible(False)
-        self.capture_button.setEnabled(True)
+            self.capture_button.setEnabled(False)
+        self.show()
 
     @pyqtSlot(QImage)
     def setImage(self, image):
@@ -289,6 +298,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def startButtonClicked(self):
         print("Start Button pressed")
+        switch_canon_to_liveview()
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
         self.captureButtonClicked()
@@ -299,20 +309,21 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def challengeButtonClicked(self):
         print("Start Challenge clicked")
+        switch_canon_to_liveview()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         challenges_path = os.path.join(dir_path, "challenges.txt")
         with open(challenges_path) as f:
             lines = f.readlines()
         SETTINGS["CHALLENGE"] = random.choice(lines)
-        SETTINGS["CHALLENGE_ACCEPTED"] = False
-        print(SETTINGS["CHALLENGE"])
 
         self.showImageControlButtons(False)
+        self.capture_button.setEnabled(True)
         self.stackedWidget.setCurrentIndex(1)
 
     def templateSelected(self):
         global SETTINGS
         print("Template was selected")
+        switch_canon_to_liveview()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         template_path = os.path.join(dir_path, "ui","collages",self.templateListWidget.selectedItems()[0].text())
         with open(template_path+"_positions.json") as f:
@@ -323,56 +334,63 @@ class Window(QMainWindow, Ui_MainWindow):
             SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
         SETTINGS["COLLAGE_ID"] = 0
         self.original_preview_time = SETTINGS["PREVIEW_TIME_SECONDS"]
-        SETTINGS["PREVIEW_TIME_SECONDS"] = 0.7                                    # only short preview during collage
+        SETTINGS["PREVIEW_TIME_SECONDS"] = 1                                   # only short preview during collag
 
         self.showImageControlButtons(False)
+        self.capture_button.setEnabled(True)
         self.stackedWidget.setCurrentIndex(1)
 
     def captureButtonClicked(self):
         global SETTINGS
         SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
         self.showImageControlButtons(False)
-        self.capture_button.setEnabled(False)
         self.work_requested.emit()
 
     def updateCountdown(self, secs_left):
         global SETTINGS
-        self.capture_button.setIcon(QIcon())
         if secs_left > 0:
             file = os.path.join(os.path.dirname(__file__), SETTINGS["COUNTDOWN_SOUND"])
             subprocess.Popen(["aplay", file])
+            self.capture_button.setIcon(QIcon())
             self.capture_button.setText(str(secs_left))
             self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
         elif secs_left == 0:                                                    # at capture
             self.capture_button.setText("Click")
-        elif secs_left < 0:                                                     # after capture
+        elif secs_left == -1:                                                     # after capture
             self.capture_button.setText("")
             self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
-            self.showImageControlButtons(True)
-            if secs_left == -2:                                                 # after preview
-                if SETTINGS["SHOW_RECAPTURE"] == False:
-                    self.stackedWidget.setCurrentIndex(0)
-                if SETTINGS["COLLAGE_ID"] is not None and \
-                    SETTINGS["COLLAGE_ID"]+1 < len(SETTINGS["COLLAGE_POSITIONS"]):
-                    SETTINGS["COLLAGE_ID"] += 1
-                    self.showImageControlButtons(False)
-                elif SETTINGS["COLLAGE_ID"] is not None and \
-                    SETTINGS["COLLAGE_ID"]+1 == len(SETTINGS["COLLAGE_POSITIONS"]):
-                    SETTINGS["FREEZE_STREAM"] = True
-                    self.capture_button.setEnabled(False)
-                    print("Collage Finished")
-                    SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-                    collage = SETTINGS["COLLAGE_TEMPLATE"]
-                    collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
-                    cv2.imwrite(SETTINGS["FILE_NAME"], collage)
-                    SETTINGS["COLLAGE_ID"] = None
-                    SETTINGS["COLLAGE_TEMPLATE"] = None
-                    SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+            if SETTINGS["COLLAGE_ID"] is None:
+                self.showImageControlButtons(True)
+        elif secs_left == -2:                                                 # after preview
+            if SETTINGS["SHOW_RECAPTURE"] == False:
+                self.stackedWidget.setCurrentIndex(0)
+            if SETTINGS["COLLAGE_ID"] is not None and \
+                SETTINGS["COLLAGE_ID"]+1 < len(SETTINGS["COLLAGE_POSITIONS"]):
+                SETTINGS["COLLAGE_ID"] += 1
+                switch_canon_to_liveview()
+                self.showImageControlButtons(False)
+                self.capture_button.setEnabled(True)
+            elif SETTINGS["COLLAGE_ID"] is not None and \
+                SETTINGS["COLLAGE_ID"]+1 == len(SETTINGS["COLLAGE_POSITIONS"]):
+                SETTINGS["FREEZE_STREAM"] = True
+                self.showImageControlButtons(True)
+                self.capture_button.setEnabled(False)
+                SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+                collage = SETTINGS["COLLAGE_TEMPLATE"]
+                collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(SETTINGS["FILE_NAME"], collage)
+                SETTINGS["FREEZE_STREAM"] = False
+                SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+                print("Collage Finished")
+
 
     def homeButtonClicked(self):
         print("Home Button pressed")
         SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
         SETTINGS["CHALLENGE"] = None
+        SETTINGS["COLLAGE_ID"] = None
+        SETTINGS["COLLAGE_TEMPLATE"] = None
+
         self.stackedWidget.setCurrentIndex(0)
     
     def deleteButtonClicked(self):
