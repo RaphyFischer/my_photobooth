@@ -192,7 +192,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.save_setting_button.clicked.connect(self.saveSettings)
         self.shutdown_button.clicked.connect(self.shutdown)
         self.open_button.clicked.connect(self.openFileDialog)
-        self.templateListWidget.itemDoubleClicked.connect(self.templateSelected)
+        self.templateListWidget.itemClicked.connect(self.templateSelected)
 
         # start capture worker
         self.worker = CaptureWorker()
@@ -222,6 +222,24 @@ class Window(QMainWindow, Ui_MainWindow):
         self.setup_page.setStyleSheet(style)
         style = "QWidget#collage_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
         self.collage_page.setStyleSheet(style)
+
+    def loadCollageImages(self):
+        self.templateListWidget.clear()
+
+        # read images from collage directory
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        collages_path = os.path.join(dir_path, "ui", "collages")
+        files = os.listdir(collages_path)
+        for f in files:
+            if f.endswith(".png"):
+                item = QtWidgets.QListWidgetItem()
+                item.setText(f[:-4])
+                item.setForeground(QColor(247, 244, 183))
+                icon = QIcon()
+                icon.addPixmap(QPixmap(os.path.join(collages_path, f)), QIcon.Normal, QIcon.Off)
+                item.setIcon(icon)
+                self.templateListWidget.addItem(item)
+        self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
 
     def refreshWelcomeText(self):
         message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+SETTINGS["WELCOME_MESSAGE"]
@@ -277,23 +295,6 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def collageButtonClicked(self):
         print("Start Collage clicked")
-        self.templateListWidget.clear()
-
-        # read images from collage directory
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        collages_path = os.path.join(dir_path, "ui", "collages")
-        files = os.listdir(collages_path)
-        for f in files:
-            if f.endswith(".png"):
-                item = QtWidgets.QListWidgetItem()
-                item.setText(f[:-4])
-                item.setForeground(QColor(247, 244, 183))
-                icon = QIcon()
-                icon.addPixmap(QPixmap(os.path.join(collages_path, f)), QIcon.Normal, QIcon.Off)
-                item.setIcon(icon)
-                self.templateListWidget.addItem(item)
-        self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
-
         self.stackedWidget.setCurrentIndex(4)
 
     def challengeButtonClicked(self):

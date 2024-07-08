@@ -1782,7 +1782,7 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
            <string notr="true">color: rgb(247, 244, 183);</string>
           </property>
           <property name="text">
-           <string>Vorlage durch Doppelklick auswählen:</string>
+           <string>Bitte eine Vorlage für die Collage auswählen:</string>
           </property>
           <property name="textFormat">
            <enum>Qt::AutoText</enum>
@@ -1801,19 +1801,25 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
            <string notr="true">background-color: transparent</string>
           </property>
           <property name="verticalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOff</enum>
+           <enum>Qt::ScrollBarAlwaysOn</enum>
           </property>
           <property name="horizontalScrollBarPolicy">
            <enum>Qt::ScrollBarAlwaysOff</enum>
           </property>
           <property name="editTriggers">
-           <set>QAbstractItemView::DoubleClicked</set>
+           <set>QAbstractItemView::NoEditTriggers</set>
           </property>
           <property name="showDropIndicator" stdset="0">
            <bool>false</bool>
           </property>
           <property name="dragDropMode">
-           <enum>QAbstractItemView::DragDrop</enum>
+           <enum>QAbstractItemView::NoDragDrop</enum>
+          </property>
+          <property name="defaultDropAction">
+           <enum>Qt::IgnoreAction</enum>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SingleSelection</enum>
           </property>
           <property name="verticalScrollMode">
            <enum>QAbstractItemView::ScrollPerPixel</enum>
@@ -1859,3 +1865,4 @@ border-image: url(:/files/backgrounds/background.png) 0 0 0 0 stretch stretch;
  </resources>
  <connections/>
 </ui>
+
