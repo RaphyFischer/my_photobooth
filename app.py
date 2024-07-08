@@ -5,6 +5,7 @@ import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
 import numpy as np
+import zc.lockfile
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
 from PyQt5.QtGui import QImage, QMovie, QPixmap, QIcon, QFontDatabase, QColor
@@ -13,6 +14,9 @@ from MainWindow import Ui_MainWindow
 import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
+
+# prevent application from running twice
+lock = zc.lockfile.LockFile('lock')
 
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
 SETTINGS = {}
