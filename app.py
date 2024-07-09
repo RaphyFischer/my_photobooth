@@ -132,7 +132,7 @@ class CaptureWorker(QObject):
 
         print("Countdown started")
         subprocess.Popen(["gphoto2", "--reset"])
-        for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
+        for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 1, -1):
             self.progress.emit(secs_left)
             time.sleep(1)
 
@@ -145,7 +145,8 @@ class CaptureWorker(QObject):
         subprocess.Popen(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
         
         # send 0 for "click"
-        time.sleep(0.75)
+        self.progress.emit(1)
+        time.sleep(1)
         self.progress.emit(0)
         SETTINGS["FREEZE_STREAM"] = True
         
@@ -367,6 +368,7 @@ class Window(QMainWindow, Ui_MainWindow):
             if SETTINGS["COLLAGE_ID"] is not None and \
                 SETTINGS["COLLAGE_ID"]+1 < len(SETTINGS["COLLAGE_POSITIONS"]):
                 SETTINGS["COLLAGE_ID"] += 1
+                time.sleep(2)
                 switch_canon_to_liveview()
                 self.showImageControlButtons(False)
                 self.capture_button.setEnabled(True)
@@ -379,8 +381,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 collage = SETTINGS["COLLAGE_TEMPLATE"]
                 collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
                 cv2.imwrite(SETTINGS["FILE_NAME"], collage)
-                SETTINGS["FREEZE_STREAM"] = False
                 SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+                SETTINGS["COLLAGE_TEMPLATE"] = None
                 print("Collage Finished")
 
 
@@ -389,7 +391,6 @@ class Window(QMainWindow, Ui_MainWindow):
         SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
         SETTINGS["CHALLENGE"] = None
         SETTINGS["COLLAGE_ID"] = None
-        SETTINGS["COLLAGE_TEMPLATE"] = None
 
         self.stackedWidget.setCurrentIndex(0)
     
