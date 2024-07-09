@@ -1,10 +1,8 @@
 Gruppenbild - Macht ein Foto mit so vielen Personen wie möglich.
 Gastgeber - Mache ein Bild mit dem Brautpaar.
 Verrenkung - Bekommst du deinen Fuß mit aufs Bild?
-Prost - Mache ein Bild mit deinem Lieblingsgetränk.
-Whatsapper - Ahme deinen liebsten Emoji nach.
-Rock on! - Spielt ein Riff auf eurer Luftgitarre.
-Mache ein Bild mit dem ältesten Gast.
+Cheers - Whatsapper - Ahme deinen liebsten Emoji nach.
+Oldie - Mache ein Bild mit dem ältesten Gast.
 Kidstime - Mache ein Bild mit allen Kindern.
 In the Movies - Stelle ein Filmszene nach.
 Arrrggh - Ziehe eine schreckliche Grimasse.
@@ -24,14 +22,14 @@ Sei frech - Mache ein Bild mit herausgestreckter Zunge.
 Junge Leute - Mache ein Foto mit einem Gast der jünger als 20 ist.
 Alte Leute - Mache ein Foto mit einem Gast der älter als 50 ist.
 Ab ins Gym - Zeig Muskeln.
-Drei Affen - Finde zwei Personen und haltet euch Augen, Ohren und Mund zu.
+Drei Affen - Haltet euch Augen, Ohren und Mund zu.
 Musiker - Mache ein Bild mit einem Instrument.
 Optiker - Fotografiere dich mit einer fremden Brille
 Mr./Mrs. X - Verkleide dich so dass man dich nicht erkennt.
 Suche zwei Personen die dir links und rechts ein Küsschen auf die Wange drücken.
 Arm in Arm - Umarmt euch
 Fotografiere dich wie ihr mit dem Handy ein Selfie macht
-Cheers - Stoße mit einer Person an
+Prost - Stoße mit einer Person an
 Stars und Sternchen - Gebt ein Live-Konzert vor der Fotobox
 Wild - Imitiere ein Tier.
 Wo sind sie denn - Versteckt euch vor der Fotobox
@@ -53,7 +51,7 @@ Herr der Ringe - Fotografiert Hände mit Eheringen.
 Hampelman - Bisschen Bewegung schadet nicht. Macht einen Hampelman.
 Dancing Queen - Führt ein Tänzchen auf.
 Talented - Zeigt ein außergewöhnliches Talent.
-Kannibale - Fotografiert euch mit Besteck.
+Hungry - Fotografiert euch mit Besteck oder Essen.
 Sport - Stellt Pantomimisch eine Sportart dar.
 Family - Mache ein Bild mit den Geschwistern der Braut/des Bräutigams
 Bärtig - Mache ein Bild von jemandem mit Bart.
@@ -65,7 +63,7 @@ Künstler - Male ein Bild und zeige es uns.
 Gen Z - Führt einen Fortnite/TikTok Tanz auf.
 Ausfahrt - Fahrt mit eurem imaginären Cabrio vorbei.
 Jahreszahl - Formt die Jahreszahl mit euren Händen.
-Der Antrag - Macht einer Person einen Antrag on camera.
+Der Antrag - Stellt einen Heiratsantrag on camera nach.
 Lektüre - Fotografiert euch mit etwas zu lesen.
 Ein schöner Rücken kann auch entzücken - Schaut über die Schulter
 Ranking - Stellt euch der Größe nach auf.
@@ -81,3 +79,4 @@ Tischkärtchen - Zeigt alle euer Tischkärtchen.
 Gossip - Lästert über die Kamera.
 Politiker - Imitiert eine/n Politiker/in.
 Dessert - Lasst euch nochmal einen Nachtisch schmecken.
+Pfiffig - Pfeift ein Liedchen zusammen.
