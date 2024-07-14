@@ -5,6 +5,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from google.auth.exceptions import TransportError
 from googleapiclient.http import MediaFileUpload
 
 
@@ -37,7 +38,11 @@ def get_credentials():
         # If there are no (valid) credentials available, let the user log in.
         if creds.expired and creds.refresh_token:
             print("WARNING: Your Credentials are expired or invalid. Please Login again.")
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except TransportError:
+                print("No internet connection")
+                return
 
         # create drive api client
         SERVICE = build("drive", "v3", credentials=creds)
