@@ -54,6 +54,12 @@ Backgrounds
 Here is a Prototype I build during developement
 ![Prototype Photobox](images/prototype_photobox.jpg)
 
+This is our finished Photbox
+![Real Photobox 1](images/finished_photobox_1.JPG)
+
+and here in a real setup
+![Real Photobox2](images/finished_photobox_2.JPG)
+
 ## Problems
 
 ## Tested on:
