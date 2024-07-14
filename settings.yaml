@@ -1,23 +1,23 @@
-WELCOME_MESSAGE: "Welcome to our Photobooth"
-BACKGROUND_IMAGE: "backgrounds/Landingpage.png"        # remember to add your custom background image to ui/resources.qrc before specifing it here
-WELCOME_TEXT_COLOR: "rgb(247, 244, 183)"
-IMAGE_BORDER_COLOR: "rgb(247, 244, 183)"
+WELCOME_MESSAGE: Welcome to our Photobooth
+BACKGROUND_IMAGE: backgrounds/Landingpage.png        # remember to add your custom background image to ui/resources.qrc before specifing it here
+WELCOME_TEXT_COLOR: rgb(247, 244, 183)
+IMAGE_BORDER_COLOR: rgb(247, 244, 183)
 
-TARGET_DIR: "data/images"
-FILE_PREFIX: ""
+TARGET_DIR: data/images
 
 COUNTDOWN_TIME_SECONDS: 5
-PREVIEW_TIME_SECONDS: 10
-COUNTDOWN_SOUND: "ui/sounds/countdown_ping.wav"
+PREVIEW_TIME_SECONDS: 20
 
-PRINTER_NAME: "CP400"
-CAMERA_INDEX: 2                                       # this is the number of your video input /dev/videoX. You can get this via v4l2-ctl --list-devices
+COUNTDOWN_SOUND: ui/sounds/countdown_ping.wav
 
-SHOW_COLLAGE: True
+PRINTER_NAME: CP400
+CAMERA_INDEX: 0
+
 SHOW_CHALLENGE: True
-SHOW_SAVE: True                                       # save button is also back button. So this is always visible
+SHOW_COLLAGE: True
 SHOW_DELETE: True
-SHOW_RECAPTURE: True
 SHOW_PRINT: True
+SHOW_RECAPTURE: True
+SHOW_SAVE: True
 SHOW_SHARE: True
 SHOW_BUTTON_TEXT: False
