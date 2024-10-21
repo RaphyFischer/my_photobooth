@@ -160,6 +160,8 @@ class CameraInitializer(QThread):
             # if camera name contains Sony call method to init sony camera
             if "Sony" in CURRENT_CAMERA:
                 print("Sony camera detected")
+                # wait for around 10 seconds to give the camera time to initialize
+                time.sleep(10)
                 settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
                 # wait for completion
                 settingIso.communicate()
