@@ -165,6 +165,7 @@ class CameraInitializer(QThread):
                 # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
                 settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
                 settfirsEmptyCommand.communicate()
+                time.sleep(0.5)
 
                 settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
                 # wait for completion
