@@ -1,6 +1,6 @@
 import sys, os, time, yaml, json, random
 from datetime import datetime
-import subprocess
+import shlex, subprocess
 import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
@@ -26,7 +26,7 @@ def switch_canon_to_liveview():
     # this function resets it to shooting mode/liveview
     # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
     p =subprocess.Popen(["gphoto2", "--capture-movie", "--stdout"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    time.sleep(0.7)
+    time.sleep(0.1)
     p.kill()
 
 class UploadThread(QThread):
@@ -129,10 +129,11 @@ class CaptureWorker(QObject):
     @pyqtSlot()
     def run(self):
         global SETTINGS
-
+        
         print("Countdown started")
-        subprocess.Popen(["gphoto2", "--reset"])
-        for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 1, -1):
+        #subprocess.Popen(["gphoto2", "--reset"])
+        for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
+            print("Countdown: %d" %secs_left)
             self.progress.emit(secs_left)
             time.sleep(1)
 
@@ -142,7 +143,12 @@ class CaptureWorker(QObject):
             SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
 
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
-        subprocess.Popen(["gphoto2", "--set-config", "chdk=On", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        print("Starting capture")
+        captureProc = subprocess.run(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        # check exit code of captureProc
+        if captureProc.returncode != None and captureProc.returncode != 0:
+            print(f"Error capturing image: {captureProc}")
+            return
         
         # send 0 for "click"
         self.progress.emit(1)
@@ -214,6 +220,8 @@ class Window(QMainWindow, Ui_MainWindow):
         th = StreamThread(self)
         th.changePixmap.connect(self.setImage)
         th.start()
+
+        self.initCamera()
 
         # start web server hosting images
         if SETTINGS["SHOW_SHARE"]:
@@ -351,7 +359,8 @@ class Window(QMainWindow, Ui_MainWindow):
         global SETTINGS
         if secs_left > 0:
             file = os.path.join(os.path.dirname(__file__), SETTINGS["COUNTDOWN_SOUND"])
-            subprocess.Popen(["aplay", file])
+            # not working on macos
+            #subprocess.Popen(["aplay", file])
             self.capture_button.setIcon(QIcon())
             self.capture_button.setText(str(secs_left))
             self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
@@ -507,12 +516,51 @@ class Window(QMainWindow, Ui_MainWindow):
     def shutdown(self):
         print("Goodbye. See you next time.")
         QApplication.quit()
+    
+    def initCamera(self):
+        # run gphoto2 --auto-detect and analyse output for detected cameras
+        process = subprocess.Popen(["gphoto2", "--auto-detect"], stdout=subprocess.PIPE)
+        out, err = process.communicate()
+        out = out.decode()
+        cameras = out.split("\n")
+        #skip the first two lines
+        cameras = cameras[2:]
+        #remove empty lines
+        cameras = list(filter(None, cameras))
+        #extract camera names
+        cameras = [c.split()[0] for c in cameras]
+        print(cameras)
+        # if camera name contains Sony call method to init sony camera
+        if any("Sony" in c for c in cameras):
+            print("Sony camera detected")
+            command_line = 'gphoto2 --set-config /main/capturesettings/shutterspeed="1/800"'
+            args = shlex.split(command_line)
+            print(args)
+            settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
+            # wait for completion
+            settingIso.communicate()
+            # check if a error occured
+            if settingIso.returncode != None and settingIso.returncode != 0:
+                print(f"Error setting ISO: {settingIso}")
+            else:
+                print("ISO set to Auto")
+
+            #settingShutter = subprocess.run(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
+            settingShutter = subprocess.Popen(args)
+            # wait for completion
+            settingShutter.communicate()
+            if settingShutter.returncode != None and settingShutter.returncode != 0:
+                print(f"Error setting shutter speed: {settingShutter}")
+            else:
+                print("Shutter speed set to 1/800")
+
+        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
     #win.resize(1920, 1200)
-    #win.show()
-    win.showFullScreen()
+    win.show()
+    #win.showFullScreen()
     sys.exit(app.exec())

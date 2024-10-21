@@ -5,3 +5,7 @@ google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
 zc.lockfile
+pillow
+pyyaml
+pyuic5-tool
+opencv-python

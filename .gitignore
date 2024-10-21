@@ -6,3 +6,5 @@ resources_rc.py
 credentials.json
 token.json
 lock
+*.jpg
+*.jpeg
