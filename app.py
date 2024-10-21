@@ -135,8 +135,10 @@ class CameraInitializer(QThread):
             time.sleep(5)
 
     def initCamera(self) -> bool:
+            global CURRENT_CAMERA
+
             # run gphoto2 --auto-detect and analyse output for detected cameras
-            process = subprocess.Popen(["gphoto2", "--auto-detect", "--parsable"], stdout=subprocess.PIPE)
+            process = subprocess.Popen(["gphoto2", "--auto-detect"], stdout=subprocess.PIPE)
             out, err = process.communicate()
             out = out.decode()
             cameras = out.split("\n")
@@ -160,9 +162,11 @@ class CameraInitializer(QThread):
             # if camera name contains Sony call method to init sony camera
             if "Sony" in CURRENT_CAMERA:
                 print("Sony camera detected")
-                # wait for around 10 seconds to give the camera time to initialize
-                time.sleep(10)
-                settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
+                # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
+                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
+                settfirsEmptyCommand.communicate()
+
+                settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
                 # wait for completion
                 settingIso.communicate()
                 # check if a error occured
@@ -170,14 +174,16 @@ class CameraInitializer(QThread):
                     print(f"Error setting ISO: {settingIso}")
                 else:
                     print("ISO set to Auto")
+                time.sleep(0.5)
 
-                settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
+                settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800", "--camera", CURRENT_CAMERA])
                 # wait for completion
                 settingShutter.communicate()
                 if settingShutter.returncode != None and settingShutter.returncode != 0:
                     print(f"Error setting shutter speed: {settingShutter}")
                 else:
                     print("Shutter speed set to 1/800")
+                time.sleep(0.5)
             
             return True
 
@@ -188,6 +194,12 @@ class CaptureWorker(QObject):
     @pyqtSlot()
     def run(self):
         global SETTINGS
+        global CURRENT_CAMERA
+
+        if CURRENT_CAMERA is None:
+            print("Camera is not detected yet. Unable to take a photo")
+            self.progress.emit(-2)
+            return
         
         print("Countdown started")
         #subprocess.Popen(["gphoto2", "--reset"])
@@ -202,12 +214,12 @@ class CaptureWorker(QObject):
 
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
         print("Starting capture")
-        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"]
+        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", CURRENT_CAMERA]
 
         if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
             args += ["--set-config", "chdk=On"]
 
-        captureProc = subprocess.Popen(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        captureProc = subprocess.Popen(args)
         # wait for completion
         captureProc.communicate()
         # check exit code of captureProc
@@ -595,7 +607,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
-    #win.resize(1920, 1200)
+    #win.resize(1280, 720)
     win.show()
     #win.showFullScreen()
     sys.exit(app.exec())
