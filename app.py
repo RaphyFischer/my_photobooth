@@ -127,6 +127,59 @@ class StreamThread(QThread):
             convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
             self.changePixmap.emit(convertToQtFormat)
 
+class CameraInitializer(QThread):
+    def run(self):
+        # init camera and repeat in case False is returned
+        while not self.initCamera():
+            print("Trying to init camera again")
+            time.sleep(5)
+
+    def initCamera(self) -> bool:
+            # run gphoto2 --auto-detect and analyse output for detected cameras
+            process = subprocess.Popen(["gphoto2", "--auto-detect", "--parsable"], stdout=subprocess.PIPE)
+            out, err = process.communicate()
+            out = out.decode()
+            cameras = out.split("\n")
+            #extract camera names
+            # Define the regular expression pattern to match the camera name
+            pattern = r"^(.*?)\s+usb:\d+,\d+"
+            cameras = [re.search(pattern, c, re.MULTILINE) for c in cameras]
+
+            # filter out none matching lines (e.g. empty lines)
+            cameras = list(filter(None, cameras))
+
+            # if more than one camera was detected use the first one
+            if len(cameras) >= 1:
+                CURRENT_CAMERA = cameras[0].group(1).strip()
+            else:
+                print("No camera detected")
+                return False
+
+            print(f"Using camera: {CURRENT_CAMERA}")
+
+            # if camera name contains Sony call method to init sony camera
+            if "Sony" in CURRENT_CAMERA:
+                print("Sony camera detected")
+                settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
+                # wait for completion
+                settingIso.communicate()
+                # check if a error occured
+                if settingIso.returncode != None and settingIso.returncode != 0:
+                    print(f"Error setting ISO: {settingIso}")
+                else:
+                    print("ISO set to Auto")
+
+                settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
+                # wait for completion
+                settingShutter.communicate()
+                if settingShutter.returncode != None and settingShutter.returncode != 0:
+                    print(f"Error setting shutter speed: {settingShutter}")
+                else:
+                    print("Shutter speed set to 1/800")
+            
+            return True
+
+
 class CaptureWorker(QObject):
     progress = pyqtSignal(int)
 
@@ -196,6 +249,11 @@ class Window(QMainWindow, Ui_MainWindow):
         self.refreshWelcomeText()
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
+
+        # Start camera initialization
+        initCameraThread = CameraInitializer()
+        initCameraThread.start()
+
         self.hidden_settings = SettingsButton(self.welcome_message)
         self.collage_button.setVisible(SETTINGS["SHOW_COLLAGE"])
         self.challenge_button.setVisible(SETTINGS["SHOW_CHALLENGE"])
@@ -220,6 +278,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.open_button.clicked.connect(self.openFileDialog)
         self.templateListWidget.itemClicked.connect(self.templateSelected)
 
+
         # start capture worker
         self.worker = CaptureWorker()
         self.worker_thread = QThread()
@@ -232,8 +291,6 @@ class Window(QMainWindow, Ui_MainWindow):
         th = StreamThread(self)
         th.changePixmap.connect(self.setImage)
         th.start()
-
-        self.initCamera()
 
         # start web server hosting images
         if SETTINGS["SHOW_SHARE"]:
@@ -529,48 +586,6 @@ class Window(QMainWindow, Ui_MainWindow):
         print("Goodbye. See you next time.")
         QApplication.quit()
     
-    def initCamera(self):
-        # run gphoto2 --auto-detect and analyse output for detected cameras
-        process = subprocess.Popen(["gphoto2", "--auto-detect", "--parsable"], stdout=subprocess.PIPE)
-        out, err = process.communicate()
-        out = out.decode()
-        cameras = out.split("\n")
-        #extract camera names
-        # Define the regular expression pattern to match the camera name
-        pattern = r"^(.*?)\s+usb:\d+,\d+"
-        cameras = [re.search(pattern, c, re.MULTILINE) for c in cameras]
-
-        # filter out none matching lines (e.g. empty lines)
-        cameras = list(filter(None, cameras))
-
-        # if more than one camera was detected use the first one
-        if len(cameras) >= 1:
-            CURRENT_CAMERA = cameras[0].group(1).strip()
-        else:
-            print("No camera detected")
-            return
-
-        print(f"Using camera: {CURRENT_CAMERA}")
-
-        # if camera name contains Sony call method to init sony camera
-        if "Sony" in CURRENT_CAMERA:
-            print("Sony camera detected")
-            settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
-            # wait for completion
-            settingIso.communicate()
-            # check if a error occured
-            if settingIso.returncode != None and settingIso.returncode != 0:
-                print(f"Error setting ISO: {settingIso}")
-            else:
-                print("ISO set to Auto")
-
-            settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
-            # wait for completion
-            settingShutter.communicate()
-            if settingShutter.returncode != None and settingShutter.returncode != 0:
-                print(f"Error setting shutter speed: {settingShutter}")
-            else:
-                print("Shutter speed set to 1/800")
 
         
 
