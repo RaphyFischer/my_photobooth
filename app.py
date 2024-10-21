@@ -1,6 +1,6 @@
 import sys, os, time, yaml, json, random
 from datetime import datetime
-import shlex, subprocess
+import re, subprocess
 import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
@@ -20,14 +20,18 @@ lock = zc.lockfile.LockFile('lock')
 
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
 SETTINGS = {}
+CURRENT_CAMERA = None
 
 def switch_canon_to_liveview():
-    # canon eos m3 goes to picture playback on usb connect and after taking images
-    # this function resets it to shooting mode/liveview
-    # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
-    p =subprocess.Popen(["gphoto2", "--capture-movie", "--stdout"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    time.sleep(0.1)
-    p.kill()
+    # only do this if we use a Canon M3
+    if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
+        # canon eos m3 goes to picture playback on usb connect and after taking images
+        # this function resets it to shooting mode/liveview
+        # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
+        p =subprocess.Popen(["gphoto2", "--capture-movie", "--stdout"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        p.communicate()
+        time.sleep(0.1)
+        p.kill()
 
 class UploadThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -133,7 +137,6 @@ class CaptureWorker(QObject):
         print("Countdown started")
         #subprocess.Popen(["gphoto2", "--reset"])
         for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
-            print("Countdown: %d" %secs_left)
             self.progress.emit(secs_left)
             time.sleep(1)
 
@@ -144,7 +147,14 @@ class CaptureWorker(QObject):
 
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
         print("Starting capture")
-        captureProc = subprocess.run(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"]
+
+        if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
+            args += ["--set-config", "chdk=On"]
+
+        captureProc = subprocess.Popen(["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep"])
+        # wait for completion
+        captureProc.communicate()
         # check exit code of captureProc
         if captureProc.returncode != None and captureProc.returncode != 0:
             print(f"Error capturing image: {captureProc}")
@@ -168,7 +178,9 @@ class CaptureWorker(QObject):
         while preview_countdown > 0 and SETTINGS["FREEZE_STREAM"]:
             time.sleep(0.2)
             preview_countdown -= 0.2
-        switch_canon_to_liveview()
+
+        switch_canon_to_liveview()  
+
         SETTINGS["FREEZE_STREAM"] = False
         self.progress.emit(-2)
 
@@ -519,23 +531,30 @@ class Window(QMainWindow, Ui_MainWindow):
     
     def initCamera(self):
         # run gphoto2 --auto-detect and analyse output for detected cameras
-        process = subprocess.Popen(["gphoto2", "--auto-detect"], stdout=subprocess.PIPE)
+        process = subprocess.Popen(["gphoto2", "--auto-detect", "--parsable"], stdout=subprocess.PIPE)
         out, err = process.communicate()
         out = out.decode()
         cameras = out.split("\n")
-        #skip the first two lines
-        cameras = cameras[2:]
-        #remove empty lines
-        cameras = list(filter(None, cameras))
         #extract camera names
-        cameras = [c.split()[0] for c in cameras]
-        print(cameras)
+        # Define the regular expression pattern to match the camera name
+        pattern = r"^(.*?)\s+usb:\d+,\d+"
+        cameras = [re.search(pattern, c, re.MULTILINE) for c in cameras]
+
+        # filter out none matching lines (e.g. empty lines)
+        cameras = list(filter(None, cameras))
+
+        # if more than one camera was detected use the first one
+        if len(cameras) >= 1:
+            CURRENT_CAMERA = cameras[0].group(1).strip()
+        else:
+            print("No camera detected")
+            return
+
+        print(f"Using camera: {CURRENT_CAMERA}")
+
         # if camera name contains Sony call method to init sony camera
-        if any("Sony" in c for c in cameras):
+        if "Sony" in CURRENT_CAMERA:
             print("Sony camera detected")
-            command_line = 'gphoto2 --set-config /main/capturesettings/shutterspeed="1/800"'
-            args = shlex.split(command_line)
-            print(args)
             settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO"])
             # wait for completion
             settingIso.communicate()
@@ -545,8 +564,7 @@ class Window(QMainWindow, Ui_MainWindow):
             else:
                 print("ISO set to Auto")
 
-            #settingShutter = subprocess.run(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
-            settingShutter = subprocess.Popen(args)
+            settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800"])
             # wait for completion
             settingShutter.communicate()
             if settingShutter.returncode != None and settingShutter.returncode != 0:
