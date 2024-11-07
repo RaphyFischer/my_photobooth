@@ -283,6 +283,9 @@ radius: 1.35, stop: 0 #C0BFBC, stop: 1 #F6F5F4
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
+              <property name="enabled">
+                <bool>false</bool>
+              </property>
               <property name="minimumSize">
                <size>
                 <width>400</width>

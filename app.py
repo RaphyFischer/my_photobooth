@@ -1,3 +1,4 @@
+import logging
 import sys, os, time, yaml, json, random
 from datetime import datetime
 import re, subprocess
@@ -18,8 +19,45 @@ from settings_button import SettingsButton
 # prevent application from running twice
 lock = zc.lockfile.LockFile('lock')
 
+DEFAULT_WELCOME_MESSAGE = "Willkommen zur Fotobox"
+DEFAULT_TARGET_DIR = "data/images"
+DEFAULT_COUNTDOWN_TIME_SECONDS = 5
+DEFAULT_PREVIEW_TIME_SECONDS = 20
+DEFAULT_SHOW_COLLAGE = False
+DEFAULT_SHOW_DELETE = True
+DEFAULT_SHOW_RECAPTURE = True
+DEFAULT_SHOW_PRINT = False
+DEFAULT_SHOW_SHARE = False
+DEFAULT_SHOW_BUTTON_TEXT = False
+DEFAULT_SHOW_CHALLENGE = False
+DEFAULT_BACKGROUND_IMAGE = "backgrounds/Landingpage.png"
+DEFAULT_CAMERA_INDEX = 0
+DEFAULT_COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
+DEFAULT_WELCOME_TEXT_COLOR = "rgb(247, 244, 183)"
+DEFAULT_IMAGE_BORDER_COLOR = "rgb(247, 244, 183)"
+
+
+
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
-SETTINGS = {}
+SETTINGS = {
+    "WELCOME_MESSAGE": DEFAULT_WELCOME_MESSAGE,
+    "TARGET_DIR": DEFAULT_TARGET_DIR,
+    "COUNTDOWN_TIME_SECONDS": DEFAULT_COUNTDOWN_TIME_SECONDS,
+    "PREVIEW_TIME_SECONDS": DEFAULT_PREVIEW_TIME_SECONDS,
+    "SHOW_COLLAGE": DEFAULT_SHOW_COLLAGE,
+    "SHOW_DELETE": DEFAULT_SHOW_DELETE,
+    "SHOW_RECAPTURE": DEFAULT_SHOW_RECAPTURE,
+    "SHOW_PRINT": DEFAULT_SHOW_PRINT,
+    "SHOW_SHARE": DEFAULT_SHOW_SHARE,
+    "SHOW_BUTTON_TEXT": DEFAULT_SHOW_BUTTON_TEXT,
+    "SHOW_CHALLENGE": DEFAULT_SHOW_CHALLENGE,
+    "BACKGROUND_IMAGE": DEFAULT_BACKGROUND_IMAGE,
+    "CAMERA_INDEX": DEFAULT_CAMERA_INDEX,
+    "COUNTDOWN_SOUND": DEFAULT_COUNTDOWN_SOUND,
+    "BACKGROUND_IMAGE": DEFAULT_BACKGROUND_IMAGE,
+    "WELCOME_TEXT_COLOR": DEFAULT_WELCOME_TEXT_COLOR,
+    "IMAGE_BORDER_COLOR": DEFAULT_IMAGE_BORDER_COLOR
+}
 CURRENT_CAMERA = None
 
 def switch_canon_to_liveview():
@@ -41,7 +79,7 @@ class UploadThread(QThread):
         try:
             file_id = share_gdrive.upload_image(SETTINGS["FILE_NAME"])
             link = share_gdrive.share_image(file_id)
-            print(f"Image uploaded to {link}")
+            logging.info(f"Image uploaded to {link}")
 
             # create qr code for image
             qr = qrcode.QRCode(
@@ -58,7 +96,7 @@ class UploadThread(QThread):
             qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
             self.changePixmap.emit(qt_img)
         except:
-            print("Upload failed")
+            logging.error("Upload failed")
 
 class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
@@ -128,11 +166,18 @@ class StreamThread(QThread):
             self.changePixmap.emit(convertToQtFormat)
 
 class CameraInitializer(QThread):
+    window = None
+
+    def __init__(self, window):
+        super().__init__()
+        self.window = window
+
     def run(self):
         # init camera and repeat in case False is returned
         while not self.initCamera():
-            print("Trying to init camera again")
+            logging.info("Trying to init camera again")
             time.sleep(5)
+        self.window.enableStartButton()
 
     def initCamera(self) -> bool:
             global CURRENT_CAMERA
@@ -154,10 +199,10 @@ class CameraInitializer(QThread):
             if len(cameras) >= 1:
                 CURRENT_CAMERA = cameras[0].group(1).strip()
             else:
-                print("No camera detected")
+                logging.warning("No camera detected")
                 return False
 
-            print(f"Using camera: {CURRENT_CAMERA}")
+            logging.info(f"Using camera: {CURRENT_CAMERA}")
 
             # if camera name contains Sony call method to init sony camera
             if "Sony" in CURRENT_CAMERA:
@@ -172,7 +217,7 @@ class CameraInitializer(QThread):
                 settingIso.communicate()
                 # check if a error occured
                 if settingIso.returncode != None and settingIso.returncode != 0:
-                    print(f"Error setting ISO: {settingIso}")
+                    logging.error(f"Error setting ISO: {settingIso}")
                 else:
                     print("ISO set to Auto")
                 time.sleep(0.5)
@@ -181,7 +226,7 @@ class CameraInitializer(QThread):
                 # wait for completion
                 settingShutter.communicate()
                 if settingShutter.returncode != None and settingShutter.returncode != 0:
-                    print(f"Error setting shutter speed: {settingShutter}")
+                    logging.error(f"Error setting shutter speed: {settingShutter}")
                 else:
                     print("Shutter speed set to 1/800")
                 time.sleep(0.5)
@@ -202,13 +247,13 @@ class CaptureWorker(QObject):
             self.progress.emit(-2)
             return
         
-        print("Countdown started")
+        logging.info("Countdown started")
         #subprocess.Popen(["gphoto2", "--reset"])
         for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
             self.progress.emit(secs_left)
             time.sleep(1)
 
-        print('Capturing image')
+        logging.info('Capturing image')
         SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         if SETTINGS["CHALLENGE"] is not None:
             SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
@@ -225,7 +270,7 @@ class CaptureWorker(QObject):
         captureProc.communicate()
         # check exit code of captureProc
         if captureProc.returncode != None and captureProc.returncode != 0:
-            print(f"Error capturing image: {captureProc}")
+            logging.error(f"Error capturing image: {captureProc}")
             return
         
         # send 0 for "click"
@@ -241,7 +286,7 @@ class CaptureWorker(QObject):
         # and -1 for shutter icon
         self.progress.emit(-1)
         
-        print('Showing preview')
+        logging.info('Showing preview')
         preview_countdown = SETTINGS["PREVIEW_TIME_SECONDS"]
         while preview_countdown > 0 and SETTINGS["FREEZE_STREAM"]:
             time.sleep(0.2)
@@ -257,6 +302,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        
         self.loadSettings()
         self.setupUi(self)
         self.loadBackgroundImage()
@@ -266,7 +312,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.overlay_buttons_on_stream()
 
         # Start camera initialization
-        initCameraThread = CameraInitializer()
+        initCameraThread = CameraInitializer(self)
         initCameraThread.start()
 
         self.hidden_settings = SettingsButton(self.welcome_message)
@@ -293,6 +339,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.open_button.clicked.connect(self.openFileDialog)
         self.templateListWidget.itemClicked.connect(self.templateSelected)
 
+        global_start_button = self.start_button
 
         # start capture worker
         self.worker = CaptureWorker()
@@ -390,18 +437,18 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stream.setPixmap(QPixmap.fromImage(image))
 
     def startButtonClicked(self):
-        print("Start Button pressed")
+        logging.info("Start Button pressed")
         switch_canon_to_liveview()
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
         self.captureButtonClicked()
 
     def collageButtonClicked(self):
-        print("Start Collage clicked")
+        logging.info("Start Collage clicked")
         self.stackedWidget.setCurrentIndex(4)
 
     def challengeButtonClicked(self):
-        print("Start Challenge clicked")
+        logging.info("Start Challenge clicked")
         switch_canon_to_liveview()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         challenges_path = os.path.join(dir_path, "challenges.txt")
@@ -415,7 +462,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def templateSelected(self):
         global SETTINGS
-        print("Template was selected")
+        logging.info("Template was selected")
         switch_canon_to_liveview()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         template_path = os.path.join(dir_path, "ui","collages",self.templateListWidget.selectedItems()[0].text())
@@ -476,11 +523,11 @@ class Window(QMainWindow, Ui_MainWindow):
                 cv2.imwrite(SETTINGS["FILE_NAME"], collage)
                 SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
                 SETTINGS["COLLAGE_TEMPLATE"] = None
-                print("Collage Finished")
+                logging.info("Collage Finished")
 
 
     def homeButtonClicked(self):
-        print("Home Button pressed")
+        logging.info("Home Button pressed")
         SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
         SETTINGS["CHALLENGE"] = None
         SETTINGS["COLLAGE_ID"] = None
@@ -488,7 +535,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(0)
     
     def deleteButtonClicked(self):
-        print("Delete last Photo")
+        logging.info("Delete last Photo")
         try:
             os.remove(SETTINGS["FILE_NAME"])
         except FileNotFoundError:
@@ -497,7 +544,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def printButtonClicked(self):
         # use CUPS+Gutenprint to print Image via Selpy CP400
-        print("Printing photo")
+        logging.info("Printing photo")
         subprocess.Popen(["lpr", "-P", SETTINGS["PRINTER_NAME"], SETTINGS["FILE_NAME"]])
 
     @pyqtSlot(QImage)
@@ -506,7 +553,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.instructions.setText("Bitte QR-Code scannen")
 
     def downloadButtonClicked(self):
-        print("Switch to download site")
+        logging.info("Switch to download site")
         self.stackedWidget.setCurrentIndex(2)
         
         # set loading spinner
@@ -521,7 +568,7 @@ class Window(QMainWindow, Ui_MainWindow):
         th.start()
 
     def settingsClicked(self):
-        print("Go to settings")
+        logging.info("Go to settings")
         # init settings view with current values
         self.lineEdit_welcome_message.setText(SETTINGS["WELCOME_MESSAGE"])
         self.lineEdit_target_dir.setText(SETTINGS["TARGET_DIR"])
@@ -541,15 +588,81 @@ class Window(QMainWindow, Ui_MainWindow):
         if folderpath:
             self.lineEdit_target_dir.setText(folderpath)        
 
+    def enableStartButton(self):
+        self.start_button.setEnabled(True)
+
+    def fillEmptySettingsWIthDefaults(self):
+        global SETTINGS
+     # check for empty settings and fill them with defaults according to the initialization of the SETTINGS object
+        if "WELCOME_MESSAGE" not in SETTINGS:
+            SETTINGS["WELCOME_MESSAGE"] = DEFAULT_WELCOME_MESSAGE
+        if "TARGET_DIR" not in SETTINGS:
+            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
+        if "COUNTDOWN_TIME_SECONDS" not in SETTINGS:
+            SETTINGS["COUNTDOWN_TIME_SECONDS"] = DEFAULT_COUNTDOWN_TIME_SECONDS
+        if "PREVIEW_TIME_SECONDS" not in SETTINGS:
+            SETTINGS["PREVIEW_TIME_SECONDS"] = DEFAULT_PREVIEW_TIME_SECONDS
+        if "SHOW_COLLAGE" not in SETTINGS:
+            SETTINGS["SHOW_COLLAGE"] = DEFAULT_SHOW_COLLAGE
+        if "SHOW_DELETE" not in SETTINGS:
+            SETTINGS["SHOW_DELETE"] = DEFAULT_SHOW_DELETE
+        if "SHOW_RECAPTURE" not in SETTINGS:
+            SETTINGS["SHOW_RECAPTURE"] = DEFAULT_SHOW_RECAPTURE
+        if "SHOW_PRINT" not in SETTINGS:
+            SETTINGS["SHOW_PRINT"] = DEFAULT_SHOW_PRINT
+        if "SHOW_SHARE" not in SETTINGS:
+            SETTINGS["SHOW_SHARE"] = DEFAULT_SHOW_SHARE
+        if "SHOW_BUTTON_TEXT" not in SETTINGS:
+            SETTINGS["SHOW_BUTTON_TEXT"] = DEFAULT_SHOW_BUTTON_TEXT
+        if "SHOW_CHALLENGE" not in SETTINGS:
+            SETTINGS["SHOW_CHALLENGE"] = DEFAULT_SHOW_CHALLENGE
+        if "BACKGROUND_IMAGE" not in SETTINGS:
+            SETTINGS["BACKGROUND_IMAGE"] = DEFAULT_BACKGROUND_IMAGE
+        if "CAMERA_INDEX" not in SETTINGS:
+            SETTINGS["CAMERA_INDEX"] = DEFAULT_CAMERA_INDEX
+        if "COUNTDOWN_SOUND" not in SETTINGS:
+            SETTINGS["COUNTDOWN_SOUND"] = DEFAULT_COUNTDOWN_SOUND
+        if "WELCOME_TEXT_COLOR" not in SETTINGS:
+            SETTINGS["WELCOME_TEXT_COLOR"] = DEFAULT_WELCOME_TEXT_COLOR
+        if "IMAGE_BORDER_COLOR" not in SETTINGS:
+            SETTINGS["IMAGE_BORDER_COLOR"] = DEFAULT_IMAGE_BORDER_COLOR
+
     def loadSettings(self):
         # load the settings from yaml to globals to use them as variables
         global SETTINGS
+        wasEmptyFile = False
+
+        # check if settings file exists
+        if not os.path.isfile(os.path.join(os.path.dirname(__file__), "settings.yaml")):
+            logging.info("No settings file found. Creating default settings.")
+            with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "w") as outfile:
+                try:
+                    # fill SETTINGS with default values
+                    yaml.dump(SETTINGS, outfile, default_flow_style=False)
+                except yaml.YAMLError as exc:
+                    logging.error(exc)
 
         with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "r") as stream:
             try:
                 SETTINGS = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
-                print(exc)
+                logging.error(exc)
+
+        # in case of an empty settings file the SETTINGS object will be None
+        # Initialization of the values is done in fillEmptySettingsWIthDefaults
+        if SETTINGS is None:
+            wasEmptyFile = True
+            SETTINGS = {}
+
+        self.fillEmptySettingsWIthDefaults()
+
+        # if the settings file was empty we need to write the default values to the file
+        if wasEmptyFile:
+            with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "w") as outfile:
+                try:
+                    yaml.dump(SETTINGS, outfile, default_flow_style=False)
+                except yaml.YAMLError as exc:
+                    logging.error(exc)
 
         # init some variables
         SETTINGS["FILE_NAME"] = ""                          # holds last filename
@@ -562,10 +675,10 @@ class Window(QMainWindow, Ui_MainWindow):
         try:
             os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
         except PermissionError:
-            print(f"Couldn't create {SETTINGS['TARGET_DIR']}")
+            logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']}")
             SETTINGS["TARGET_DIR"] = "photobox/images"
             os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
-            print(f"Using {SETTINGS['TARGET_DIR']} instead")
+            logging.error(f"Using {SETTINGS['TARGET_DIR']} instead")
 
     def saveSettings(self):
         global SETTINGS
@@ -586,7 +699,7 @@ class Window(QMainWindow, Ui_MainWindow):
             try:
                 yaml.dump(SETTINGS, outfile, default_flow_style=False)
             except yaml.YAMLError as exc:
-                print(exc)
+                logging.info(exc)
 
         self.loadSettings()
         self.loadBackgroundImage()
@@ -598,13 +711,20 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(0)
 
     def shutdown(self):
-        print("Goodbye. See you next time.")
+        logging.info("Goodbye. See you next time.")
         QApplication.quit()
     
 
         
 
 if __name__ == "__main__":
+    logging.basicConfig(filename="photobox.log",
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
+
+
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
