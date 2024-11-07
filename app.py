@@ -206,7 +206,7 @@ class CameraInitializer(QThread):
 
             # if camera name contains Sony call method to init sony camera
             if "Sony" in CURRENT_CAMERA:
-                print("Sony camera detected")
+                logging.info("Sony camera detected")
                 # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
                 settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
                 settfirsEmptyCommand.communicate()
@@ -219,7 +219,7 @@ class CameraInitializer(QThread):
                 if settingIso.returncode != None and settingIso.returncode != 0:
                     logging.error(f"Error setting ISO: {settingIso}")
                 else:
-                    print("ISO set to Auto")
+                    logging.info("ISO set to Auto")
                 time.sleep(0.5)
 
                 settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800", "--camera", CURRENT_CAMERA])
@@ -228,7 +228,7 @@ class CameraInitializer(QThread):
                 if settingShutter.returncode != None and settingShutter.returncode != 0:
                     logging.error(f"Error setting shutter speed: {settingShutter}")
                 else:
-                    print("Shutter speed set to 1/800")
+                    logging.info("Shutter speed set to 1/800")
                 time.sleep(0.5)
             
             return True
@@ -243,7 +243,7 @@ class CaptureWorker(QObject):
         global CURRENT_CAMERA
 
         if CURRENT_CAMERA is None:
-            print("Camera is not detected yet. Unable to take a photo")
+            logging.error("Camera is not detected yet. Unable to take a photo")
             self.progress.emit(-2)
             return
         
@@ -259,7 +259,7 @@ class CaptureWorker(QObject):
             SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
 
         #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
-        print("Starting capture")
+        logging.info("Starting capture")
         args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", CURRENT_CAMERA]
 
         if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
