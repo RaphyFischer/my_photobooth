@@ -14,7 +14,7 @@ pip install -r requirements.txt
 sudo tee /usr/share/applications/photobooth.desktop  > /dev/null <<EOT
 [Desktop Entry]
 Name=MyPhotobooth
-Exec=python $PWD/app.py
+Exec=python $PWD/app.py -fullscreen
 Icon=$PWD/ui/icons/aperature.png
 Type=Application
 Terminal=false

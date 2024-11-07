@@ -744,6 +744,11 @@ if __name__ == "__main__":
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
     #win.resize(1280, 720)
-    win.show()
+
+    # show window in fullscreen if -fullscreen is passed as argument
+    if "-fullscreen" in sys.argv:
+        win.showFullScreen()
+    else:
+        win.show()
     #win.showFullScreen()
     sys.exit(app.exec())
