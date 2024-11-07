@@ -35,7 +35,8 @@ DEFAULT_CAMERA_INDEX = 0
 DEFAULT_COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
 DEFAULT_WELCOME_TEXT_COLOR = "rgb(247, 244, 183)"
 DEFAULT_IMAGE_BORDER_COLOR = "rgb(247, 244, 183)"
-
+DEFAULT_ISO=320
+DEFAULT_SHUTTER_SPEED="1/200"
 
 
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
@@ -208,27 +209,27 @@ class CameraInitializer(QThread):
             if "Sony" in CURRENT_CAMERA:
                 logging.info("Sony camera detected")
                 # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
-                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
+                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
                 settfirsEmptyCommand.communicate()
                 time.sleep(0.5)
 
-                settingIso = subprocess.Popen(["gphoto2", "--set-config", "/main/imgsettings/iso=Auto ISO", "--camera", CURRENT_CAMERA])
+                settingIso = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
                 # wait for completion
                 settingIso.communicate()
                 # check if a error occured
                 if settingIso.returncode != None and settingIso.returncode != 0:
                     logging.error(f"Error setting ISO: {settingIso}")
                 else:
-                    logging.info("ISO set to Auto")
+                    logging.info(f"ISO set to {DEFAULT_ISO}")
                 time.sleep(0.5)
 
-                settingShutter = subprocess.Popen(["gphoto2", "--set-config", "/main/capturesettings/shutterspeed=1/800", "--camera", CURRENT_CAMERA])
+                settingShutter = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/shutterspeed={DEFAULT_SHUTTER_SPEED}", "--camera", CURRENT_CAMERA])
                 # wait for completion
                 settingShutter.communicate()
                 if settingShutter.returncode != None and settingShutter.returncode != 0:
                     logging.error(f"Error setting shutter speed: {settingShutter}")
                 else:
-                    logging.info("Shutter speed set to 1/800")
+                    logging.info(f"Shutter speed set to {DEFAULT_SHUTTER_SPEED}")
                 time.sleep(0.5)
             
             return True
