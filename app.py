@@ -297,6 +297,20 @@ class CaptureWorker(QObject):
         SETTINGS["FREEZE_STREAM"] = False
         self.progress.emit(-2)
 
+    def ensureTargetDirExists(self):
+        # check if target dir exists if not existing create it. If creation fails use default dir
+        try:
+            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+        except :
+            logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']} using default dir instead: {DEFAULT_TARGET_DIR}")
+            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
+            try:
+                os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+            except:
+                logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']}")
+                self.progress.emit(-2)
+                return
+
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
 
@@ -676,7 +690,7 @@ class Window(QMainWindow, Ui_MainWindow):
             os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
         except PermissionError:
             logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']}")
-            SETTINGS["TARGET_DIR"] = "photobox/images"
+            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
             os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
             logging.error(f"Using {SETTINGS['TARGET_DIR']} instead")
 
