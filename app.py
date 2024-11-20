@@ -1,7 +1,7 @@
 import logging
 import sys, os, time, yaml, json, random
 from datetime import datetime
-import re, subprocess
+import subprocess
 import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
@@ -12,6 +12,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
 from PyQt5.QtGui import QImage, QMovie, QPixmap, QIcon, QFontDatabase, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
+from cameraInitializer import CameraInitializer
 import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
@@ -35,8 +36,6 @@ DEFAULT_CAMERA_INDEX = 0
 DEFAULT_COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
 DEFAULT_WELCOME_TEXT_COLOR = "rgb(247, 244, 183)"
 DEFAULT_IMAGE_BORDER_COLOR = "rgb(247, 244, 183)"
-DEFAULT_ISO=320
-DEFAULT_SHUTTER_SPEED="1/200"
 
 
 # Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
@@ -165,74 +164,6 @@ class StreamThread(QThread):
             rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
             convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
             self.changePixmap.emit(convertToQtFormat)
-
-class CameraInitializer(QThread):
-    window = None
-
-    def __init__(self, window):
-        super().__init__()
-        self.window = window
-
-    def run(self):
-        # init camera and repeat in case False is returned
-        while not self.initCamera():
-            logging.info("Trying to init camera again")
-            time.sleep(5)
-        self.window.enableStartButton()
-
-    def initCamera(self) -> bool:
-            global CURRENT_CAMERA
-
-            # run gphoto2 --auto-detect and analyse output for detected cameras
-            process = subprocess.Popen(["gphoto2", "--auto-detect"], stdout=subprocess.PIPE)
-            out, err = process.communicate()
-            out = out.decode()
-            cameras = out.split("\n")
-            #extract camera names
-            # Define the regular expression pattern to match the camera name
-            pattern = r"^(.*?)\s+usb:\d+,\d+"
-            cameras = [re.search(pattern, c, re.MULTILINE) for c in cameras]
-
-            # filter out none matching lines (e.g. empty lines)
-            cameras = list(filter(None, cameras))
-
-            # if more than one camera was detected use the first one
-            if len(cameras) >= 1:
-                CURRENT_CAMERA = cameras[0].group(1).strip()
-            else:
-                logging.warning("No camera detected")
-                return False
-
-            logging.info(f"Using camera: {CURRENT_CAMERA}")
-
-            # if camera name contains Sony call method to init sony camera
-            if "Sony" in CURRENT_CAMERA:
-                logging.info("Sony camera detected")
-                # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
-                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
-                settfirsEmptyCommand.communicate()
-                time.sleep(0.5)
-
-                settingIso = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
-                # wait for completion
-                settingIso.communicate()
-                # check if a error occured
-                if settingIso.returncode != None and settingIso.returncode != 0:
-                    logging.error(f"Error setting ISO: {settingIso}")
-                else:
-                    logging.info(f"ISO set to {DEFAULT_ISO}")
-                time.sleep(0.5)
-
-                settingShutter = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/shutterspeed={DEFAULT_SHUTTER_SPEED}", "--camera", CURRENT_CAMERA])
-                # wait for completion
-                settingShutter.communicate()
-                if settingShutter.returncode != None and settingShutter.returncode != 0:
-                    logging.error(f"Error setting shutter speed: {settingShutter}")
-                else:
-                    logging.info(f"Shutter speed set to {DEFAULT_SHUTTER_SPEED}")
-                time.sleep(0.5)
-            
-            return True
 
 
 class CaptureWorker(QObject):
