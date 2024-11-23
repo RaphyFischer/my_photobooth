@@ -2,6 +2,7 @@ import logging
 from PyQt5.QtCore import QThread, pyqtSlot
 import time
 import subprocess, re
+import globals
 
 DEFAULT_ISO=320
 DEFAULT_SHUTTER_SPEED="1/200"
@@ -24,7 +25,6 @@ class CameraInitializer(QThread):
         self.window.enableStartButton()
 
     def initCamera(self) -> bool:
-            global CURRENT_CAMERA
 
             # run gphoto2 --auto-detect and analyse output for detected cameras
             process = subprocess.Popen(["gphoto2", "--auto-detect"], stdout=subprocess.PIPE)
@@ -41,22 +41,22 @@ class CameraInitializer(QThread):
 
             # if more than one camera was detected use the first one
             if len(cameras) >= 1:
-                CURRENT_CAMERA = cameras[0].group(1).strip()
+                globals.CURRENT_CAMERA = cameras[0].group(1).strip()
             else:
                 logging.warning("No camera detected")
                 return False
 
-            logging.info(f"Using camera: {CURRENT_CAMERA}")
+            logging.info(f"Using camera: {globals.CURRENT_CAMERA}")
 
             # if camera name contains Sony call method to init sony camera
-            if "Sony" in CURRENT_CAMERA:
+            if "Sony" in globals.CURRENT_CAMERA:
                 logging.info("Sony camera detected")
                 # somehow the first command issued with gphoto2 will not work correctly on Sony cameras. So we issue it two times.
-                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
+                settfirsEmptyCommand = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", globals.CURRENT_CAMERA])
                 settfirsEmptyCommand.communicate()
                 time.sleep(0.5)
 
-                settingIso = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", CURRENT_CAMERA])
+                settingIso = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/iso={DEFAULT_ISO}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingIso.communicate()
                 # check if a error occured
@@ -66,7 +66,7 @@ class CameraInitializer(QThread):
                     logging.info(f"ISO set to {DEFAULT_ISO}")
                 time.sleep(0.5)
 
-                settingShutter = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/shutterspeed={DEFAULT_SHUTTER_SPEED}", "--camera", CURRENT_CAMERA])
+                settingShutter = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/shutterspeed={DEFAULT_SHUTTER_SPEED}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingShutter.communicate()
                 if settingShutter.returncode != None and settingShutter.returncode != 0:
@@ -75,7 +75,7 @@ class CameraInitializer(QThread):
                     logging.info(f"Shutter speed set to {DEFAULT_SHUTTER_SPEED}")
                 time.sleep(0.5)
             
-                settingFocusMode = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/focusmode={DEFAULT_FOCUS_MODE}", "--camera", CURRENT_CAMERA])
+                settingFocusMode = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/focusmode={DEFAULT_FOCUS_MODE}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingFocusMode.communicate()
                 if settingFocusMode.returncode != None and settingFocusMode.returncode != 0:
@@ -84,7 +84,7 @@ class CameraInitializer(QThread):
                     logging.info(f"Focus mode set to {DEFAULT_FOCUS_MODE}")
                 time.sleep(0.5)
 
-                settingWhiteBalance = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/whitebalance={DEFAULT_WHITEBALANCE_MODE}", "--camera", CURRENT_CAMERA])
+                settingWhiteBalance = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/whitebalance={DEFAULT_WHITEBALANCE_MODE}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingWhiteBalance.communicate()
                 if settingWhiteBalance.returncode != None and settingWhiteBalance.returncode != 0:
@@ -93,7 +93,7 @@ class CameraInitializer(QThread):
                     logging.info(f"Whitebalance mode set to {DEFAULT_WHITEBALANCE_MODE}")
                 time.sleep(0.5)
 
-                settingFNumber = subprocess.Popen(["gphoto2", "--set-config", f"/main/imgsettings/f-number={DEFAULT_F_NUMBER}", "--camera", CURRENT_CAMERA])
+                settingFNumber = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/f-number={DEFAULT_F_NUMBER}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingFNumber.communicate()
                 if settingFNumber.returncode != None and settingFNumber.returncode != 0:

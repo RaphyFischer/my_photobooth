@@ -16,6 +16,7 @@ from cameraInitializer import CameraInitializer
 import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
+import globals
 
 # prevent application from running twice
 lock = zc.lockfile.LockFile('lock')
@@ -58,11 +59,10 @@ SETTINGS = {
     "WELCOME_TEXT_COLOR": DEFAULT_WELCOME_TEXT_COLOR,
     "IMAGE_BORDER_COLOR": DEFAULT_IMAGE_BORDER_COLOR
 }
-CURRENT_CAMERA = None
 
 def switch_canon_to_liveview():
     # only do this if we use a Canon M3
-    if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
+    if globals.CURRENT_CAMERA is not None and "Canon" in globals.CURRENT_CAMERA and "M3" in globals.CURRENT_CAMERA:
         # canon eos m3 goes to picture playback on usb connect and after taking images
         # this function resets it to shooting mode/liveview
         # install chdk on your sd card and run this command gphoto2 --set-config chdk=On
@@ -172,9 +172,8 @@ class CaptureWorker(QObject):
     @pyqtSlot()
     def run(self):
         global SETTINGS
-        global CURRENT_CAMERA
 
-        if CURRENT_CAMERA is None:
+        if globals.CURRENT_CAMERA is None:
             logging.error("Camera is not detected yet. Unable to take a photo")
             self.progress.emit(-2)
             return
@@ -190,11 +189,10 @@ class CaptureWorker(QObject):
         if SETTINGS["CHALLENGE"] is not None:
             SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
 
-        #gphoto2 --filename data/test/photobox_\%m\%d\%Y_\%H\%M\%S.jpg --capture-image-and-download
         logging.info("Starting capture")
-        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", CURRENT_CAMERA]
+        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", globals.CURRENT_CAMERA]
 
-        if CURRENT_CAMERA is not None and "Canon" in CURRENT_CAMERA and "M3" in CURRENT_CAMERA:
+        if globals.CURRENT_CAMERA is not None and "Canon" in globals.CURRENT_CAMERA and "M3" in globals.CURRENT_CAMERA:
             args += ["--set-config", "chdk=On"]
 
         captureProc = subprocess.Popen(args)
