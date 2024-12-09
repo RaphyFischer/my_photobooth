@@ -1,28 +1,27 @@
 import logging
-from PyQt5.QtCore import QThread, pyqtSlot
+from PyQt5.QtCore import QThread, pyqtSlot, pyqtSignal
 import time
 import subprocess, re
 import globals
 
 DEFAULT_ISO=320
-DEFAULT_SHUTTER_SPEED="1/200"
+DEFAULT_SHUTTER_SPEED="1/60"
 DEFAULT_FOCUS_MODE="Automatic"
 DEFAULT_WHITEBALANCE_MODE="Flash"
-DEFAULT_F_NUMBER="f/8"
+DEFAULT_F_NUMBER="f/2.8"
 
 class CameraInitializer(QThread):
-    window = None
+    enable_buttons_signal = pyqtSignal(bool)
 
     def __init__(self, window):
         super().__init__()
-        self.window = window
 
     def run(self):
         # init camera and repeat in case False is returned
         while not self.initCamera():
             logging.info("Trying to init camera again")
             time.sleep(5)
-        self.window.enableStartButton()
+        self.enable_buttons_signal.emit(True)
 
     def initCamera(self) -> bool:
 
@@ -96,7 +95,7 @@ class CameraInitializer(QThread):
                 settingFNumber = subprocess.Popen(["gphoto2", "--set-config", f"/main/capturesettings/f-number={DEFAULT_F_NUMBER}", "--camera", globals.CURRENT_CAMERA])
                 # wait for completion
                 settingFNumber.communicate()
-                if settingFNumber.returncode != None and settingFNumber.returncode != 0:
+                if settingFNumber.returncode != None and settingFNumber.returncode != 0 or  settingFNumber.stdout != None and "Error" in settingFNumber.stdout:
                     logging.error(f"Error setting f number: {settingFNumber}")
                 else:
                     logging.info(f"F-Number set to {DEFAULT_F_NUMBER}")

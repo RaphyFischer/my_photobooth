@@ -2,6 +2,7 @@ import logging
 import sys, os, time, yaml, json, random
 from datetime import datetime
 import subprocess
+from captureworker import CaptureWorker
 import cv2
 from PIL import Image, ImageFont, ImageDraw
 import qrcode
@@ -21,45 +22,6 @@ import globals
 # prevent application from running twice
 lock = zc.lockfile.LockFile('lock')
 
-DEFAULT_WELCOME_MESSAGE = "Willkommen zur Fotobox"
-DEFAULT_TARGET_DIR = "data/images"
-DEFAULT_COUNTDOWN_TIME_SECONDS = 5
-DEFAULT_PREVIEW_TIME_SECONDS = 20
-DEFAULT_SHOW_COLLAGE = False
-DEFAULT_SHOW_DELETE = True
-DEFAULT_SHOW_RECAPTURE = True
-DEFAULT_SHOW_PRINT = False
-DEFAULT_SHOW_SHARE = False
-DEFAULT_SHOW_BUTTON_TEXT = False
-DEFAULT_SHOW_CHALLENGE = False
-DEFAULT_BACKGROUND_IMAGE = "backgrounds/Landingpage.png"
-DEFAULT_CAMERA_INDEX = 0
-DEFAULT_COUNTDOWN_SOUND = "ui/sounds/countdown_ping.wav"
-DEFAULT_WELCOME_TEXT_COLOR = "rgb(247, 244, 183)"
-DEFAULT_IMAGE_BORDER_COLOR = "rgb(247, 244, 183)"
-
-
-# Settings are read from settings.yaml. Adjust them there or in GUI by long pressing the welcome message
-SETTINGS = {
-    "WELCOME_MESSAGE": DEFAULT_WELCOME_MESSAGE,
-    "TARGET_DIR": DEFAULT_TARGET_DIR,
-    "COUNTDOWN_TIME_SECONDS": DEFAULT_COUNTDOWN_TIME_SECONDS,
-    "PREVIEW_TIME_SECONDS": DEFAULT_PREVIEW_TIME_SECONDS,
-    "SHOW_COLLAGE": DEFAULT_SHOW_COLLAGE,
-    "SHOW_DELETE": DEFAULT_SHOW_DELETE,
-    "SHOW_RECAPTURE": DEFAULT_SHOW_RECAPTURE,
-    "SHOW_PRINT": DEFAULT_SHOW_PRINT,
-    "SHOW_SHARE": DEFAULT_SHOW_SHARE,
-    "SHOW_BUTTON_TEXT": DEFAULT_SHOW_BUTTON_TEXT,
-    "SHOW_CHALLENGE": DEFAULT_SHOW_CHALLENGE,
-    "BACKGROUND_IMAGE": DEFAULT_BACKGROUND_IMAGE,
-    "CAMERA_INDEX": DEFAULT_CAMERA_INDEX,
-    "COUNTDOWN_SOUND": DEFAULT_COUNTDOWN_SOUND,
-    "BACKGROUND_IMAGE": DEFAULT_BACKGROUND_IMAGE,
-    "WELCOME_TEXT_COLOR": DEFAULT_WELCOME_TEXT_COLOR,
-    "IMAGE_BORDER_COLOR": DEFAULT_IMAGE_BORDER_COLOR
-}
-
 def switch_canon_to_liveview():
     # only do this if we use a Canon M3
     if globals.CURRENT_CAMERA is not None and "Canon" in globals.CURRENT_CAMERA and "M3" in globals.CURRENT_CAMERA:
@@ -77,7 +39,7 @@ class UploadThread(QThread):
     def run(self):
         # share file via link
         try:
-            file_id = share_gdrive.upload_image(SETTINGS["FILE_NAME"])
+            file_id = share_gdrive.upload_image(globals.SETTINGS["FILE_NAME"])
             link = share_gdrive.share_image(file_id)
             logging.info(f"Image uploaded to {link}")
 
@@ -109,7 +71,7 @@ class StreamThread(QThread):
         scaled_width = int(cropped_width*scale)
         scaled_height = int(height*scale)
         
-        cap = cv2.VideoCapture(SETTINGS["CAMERA_INDEX"])
+        cap = cv2.VideoCapture(globals.SETTINGS["CAMERA_INDEX"])
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         cap.set(cv2.CAP_PROP_FPS, 25)
@@ -119,134 +81,39 @@ class StreamThread(QThread):
             if not ret:
                 continue
 
-            if not SETTINGS["FREEZE_STREAM"]:
+            if not globals.SETTINGS["FREEZE_STREAM"]:
                 frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
-            elif os.path.isfile(SETTINGS["FILE_NAME"]):
-                frame = cv2.imread(SETTINGS["FILE_NAME"])
+            elif os.path.isfile(globals.SETTINGS["FILE_NAME"]):
+                frame = cv2.imread(globals.SETTINGS["FILE_NAME"])
                 # collages are saved "unflipped"! -> Flip twice here
-                if "collage" in SETTINGS["FILE_NAME"]:
+                if "collage" in globals.SETTINGS["FILE_NAME"]:
                     frame = cv2.flip(frame, 1)
             else:
                 continue
             frame = cv2.flip(frame, 1)
             rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            if SETTINGS["COLLAGE_TEMPLATE"] is not None:
-                collageImage = SETTINGS["COLLAGE_TEMPLATE"]
-                positionInfo = SETTINGS["COLLAGE_POSITIONS"][SETTINGS["COLLAGE_ID"]]
+            if globals.SETTINGS["COLLAGE_TEMPLATE"] is not None:
+                collageImage = globals.SETTINGS["COLLAGE_TEMPLATE"]
+                positionInfo = globals.SETTINGS["COLLAGE_POSITIONS"][globals.SETTINGS["COLLAGE_ID"]]
                 xcenter, ycenter = positionInfo["position"]
                 w, h = positionInfo["size"]
                 collageImage[ycenter-int(h/2):ycenter+int(h/2), xcenter-int(w/2):xcenter+int(w/2)] = \
                     cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
-                SETTINGS["COLLAGE_TEMPLATE"] = collageImage
+                globals.SETTINGS["COLLAGE_TEMPLATE"] = collageImage
                 rgbImage = collageImage
-
-            if SETTINGS["CHALLENGE"] is not None:
-                chal = SETTINGS["CHALLENGE"]
-                pil_image = Image.fromarray(rgbImage)
-                draw = ImageDraw.Draw(pil_image, "RGBA")
-
-                font = ImageFont.truetype(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"), 30)
-                position = (int(cropped_width/2), 90)
-                if " - "in chal:
-                    title, text = chal.split(" - ")
-                else:
-                    title, text = "", chal
-                text = f"Deine Challenge: {title} -\n{text}"
-
-                left, top, right, bottom = draw.textbbox(position, text, font=font, anchor="mm")
-                draw.rectangle((left-5, top-25, right+5, bottom+5), fill=(0,0,0,127))
-                draw.text(position, text, font=font, fill=(247, 244, 183, 255), anchor="mm")
-
-                # Convert back to Numpy array and switch back from RGB to BGR
-                rgbImage = np.asarray(pil_image)
 
             rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
             convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
             self.changePixmap.emit(convertToQtFormat)
 
 
-class CaptureWorker(QObject):
-    progress = pyqtSignal(int)
-
-    @pyqtSlot()
-    def run(self):
-        global SETTINGS
-
-        if globals.CURRENT_CAMERA is None:
-            logging.error("Camera is not detected yet. Unable to take a photo")
-            self.progress.emit(-2)
-            return
-        
-        logging.info("Countdown started")
-        #subprocess.Popen(["gphoto2", "--reset"])
-        for secs_left in range(SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
-            self.progress.emit(secs_left)
-            time.sleep(1)
-
-        logging.info('Capturing image')
-        SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-        if SETTINGS["CHALLENGE"] is not None:
-            SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "challenge_%s_%s.jpg" %(SETTINGS["CHALLENGE"][:25], datetime.now().strftime("%m%d%Y_%H%M%S")))
-
-        logging.info("Starting capture")
-        args = ["gphoto2", "--filename", SETTINGS["FILE_NAME"], "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", globals.CURRENT_CAMERA]
-
-        if globals.CURRENT_CAMERA is not None and "Canon" in globals.CURRENT_CAMERA and "M3" in globals.CURRENT_CAMERA:
-            args += ["--set-config", "chdk=On"]
-
-        captureProc = subprocess.Popen(args)
-        # wait for completion
-        captureProc.communicate()
-        # check exit code of captureProc
-        if captureProc.returncode != None and captureProc.returncode != 0:
-            logging.error(f"Error capturing image: {captureProc}")
-            return
-        
-        # send 0 for "click"
-        self.progress.emit(1)
-        time.sleep(1)
-        self.progress.emit(0)
-        SETTINGS["FREEZE_STREAM"] = True
-        
-        # wait for image to transfer from camera to device
-        while not os.path.isfile(SETTINGS["FILE_NAME"]):
-            time.sleep(0.2)
-
-        # and -1 for shutter icon
-        self.progress.emit(-1)
-        
-        logging.info('Showing preview')
-        preview_countdown = SETTINGS["PREVIEW_TIME_SECONDS"]
-        while preview_countdown > 0 and SETTINGS["FREEZE_STREAM"]:
-            time.sleep(0.2)
-            preview_countdown -= 0.2
-
-        switch_canon_to_liveview()  
-
-        SETTINGS["FREEZE_STREAM"] = False
-        self.progress.emit(-2)
-
-    def ensureTargetDirExists(self):
-        # check if target dir exists if not existing create it. If creation fails use default dir
-        try:
-            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
-        except :
-            logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']} using default dir instead: {DEFAULT_TARGET_DIR}")
-            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
-            try:
-                os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
-            except:
-                logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']}")
-                self.progress.emit(-2)
-                return
-
 class Window(QMainWindow, Ui_MainWindow):
     work_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        
+
         self.loadSettings()
         self.setupUi(self)
         self.loadBackgroundImage()
@@ -255,13 +122,15 @@ class Window(QMainWindow, Ui_MainWindow):
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
 
+        self.start_button.setVisible(False)
+        self.collage_button.setVisible(False)
+
         # Start camera initialization
         initCameraThread = CameraInitializer(self)
+        initCameraThread.enable_buttons_signal.connect(self.enableStartButtons)
         initCameraThread.start()
 
         self.hidden_settings = SettingsButton(self.welcome_message)
-        self.collage_button.setVisible(SETTINGS["SHOW_COLLAGE"])
-        self.challenge_button.setVisible(SETTINGS["SHOW_CHALLENGE"])
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
@@ -271,7 +140,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.hidden_settings.longclicked.connect(self.settingsClicked)
         self.start_button.clicked.connect(self.startButtonClicked)
         self.collage_button.clicked.connect(self.collageButtonClicked)
-        self.challenge_button.clicked.connect(self.challengeButtonClicked)
         self.home_button.clicked.connect(self.homeButtonClicked)
         self.delete_button.clicked.connect(self.deleteButtonClicked)
         self.capture_button.clicked.connect(self.captureButtonClicked)
@@ -282,8 +150,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.shutdown_button.clicked.connect(self.shutdown)
         self.open_button.clicked.connect(self.openFileDialog)
         self.templateListWidget.itemClicked.connect(self.templateSelected)
-
-        global_start_button = self.start_button
 
         # start capture worker
         self.worker = CaptureWorker()
@@ -299,19 +165,19 @@ class Window(QMainWindow, Ui_MainWindow):
         th.start()
 
         # start web server hosting images
-        if SETTINGS["SHOW_SHARE"]:
+        if globals.SETTINGS["SHOW_SHARE"]:
             share_gdrive.get_credentials()
 
     def loadBackgroundImage(self):
-        style = "QWidget#start_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        style = "QWidget#start_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %globals.SETTINGS["BACKGROUND_IMAGE"]
         self.start_page.setStyleSheet(style)
-        style = "QWidget#photo_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        style = "QWidget#photo_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %globals.SETTINGS["BACKGROUND_IMAGE"]
         self.photo_page.setStyleSheet(style)
-        style = "QWidget#download_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        style = "QWidget#download_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %globals.SETTINGS["BACKGROUND_IMAGE"]
         self.download_page.setStyleSheet(style)
-        style = "QWidget#setup_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        style = "QWidget#setup_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %globals.SETTINGS["BACKGROUND_IMAGE"]
         self.setup_page.setStyleSheet(style)
-        style = "QWidget#collage_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %SETTINGS["BACKGROUND_IMAGE"]
+        style = "QWidget#collage_page{border-image: url(:/files/%s) 0 0 0 0 stretch stretch;}" %globals.SETTINGS["BACKGROUND_IMAGE"]
         self.collage_page.setStyleSheet(style)
 
     def loadCollageImages(self):
@@ -333,15 +199,15 @@ class Window(QMainWindow, Ui_MainWindow):
         self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
 
     def refreshWelcomeText(self):
-        message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+SETTINGS["WELCOME_MESSAGE"]
+        message_and_time = datetime.now().strftime("%A %d. %b %Y   %H:%M")+"\n"+globals.SETTINGS["WELCOME_MESSAGE"]
         self.welcome_message.setText(message_and_time)
-        self.welcome_message.setStyleSheet(f"color: {SETTINGS['WELCOME_TEXT_COLOR']};")
-        self.stream.setStyleSheet(f"border: 5px solid {SETTINGS['IMAGE_BORDER_COLOR']};")
+        self.welcome_message.setStyleSheet(f"color: {globals.SETTINGS['WELCOME_TEXT_COLOR']};")
+        self.stream.setStyleSheet(f"border: 5px solid {globals.SETTINGS['IMAGE_BORDER_COLOR']};")
 
     def setRecaptureMode(self):
         # if recapture is activated show home button in photo view else show save button
         icon = QIcon()
-        if SETTINGS["SHOW_RECAPTURE"]:icon.addPixmap(QPixmap(":/files/icons/home.png"), QIcon.Normal, QIcon.Off)
+        if globals.SETTINGS["SHOW_RECAPTURE"]:icon.addPixmap(QPixmap(":/files/icons/home.png"), QIcon.Normal, QIcon.Off)
         else: icon.addPixmap(QPixmap(":/files/icons/save.png"), QIcon.Normal, QIcon.Off)
         self.home_button.setIcon(icon)
 
@@ -353,7 +219,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.photo_page_grid.addItem(spacer, 0, 2, 0, 1)
         self.photo_page_grid.addLayout(self.photo_page_buttons, 4, 0, 1, 1)
 
-        if SETTINGS["SHOW_BUTTON_TEXT"]:
+        if globals.SETTINGS["SHOW_BUTTON_TEXT"]:
             self.home_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
             self.delete_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
             self.download_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -362,10 +228,10 @@ class Window(QMainWindow, Ui_MainWindow):
     def showImageControlButtons(self, visible):
         if visible:                                                     # icon menue is visible
             self.home_button.setVisible(True)
-            self.delete_button.setVisible(SETTINGS["SHOW_DELETE"])
-            self.capture_button.setVisible(SETTINGS["SHOW_RECAPTURE"])
-            self.download_button.setVisible(SETTINGS["SHOW_SHARE"])
-            self.print_button.setVisible(SETTINGS["SHOW_PRINT"])
+            self.delete_button.setVisible(globals.SETTINGS["SHOW_DELETE"])
+            self.capture_button.setVisible(globals.SETTINGS["SHOW_RECAPTURE"])
+            self.download_button.setVisible(globals.SETTINGS["SHOW_SHARE"])
+            self.print_button.setVisible(globals.SETTINGS["SHOW_PRINT"])
             self.capture_button.setEnabled(True)
         else:                                                           # capture countdown is running
             self.capture_button.setVisible(True)
@@ -385,24 +251,12 @@ class Window(QMainWindow, Ui_MainWindow):
         switch_canon_to_liveview()
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
-        self.captureButtonClicked()
+        self.capture_button.setEnabled(True)
+        self.capture_button.setVisible(True)
 
     def collageButtonClicked(self):
         logging.info("Start Collage clicked")
         self.stackedWidget.setCurrentIndex(4)
-
-    def challengeButtonClicked(self):
-        logging.info("Start Challenge clicked")
-        switch_canon_to_liveview()
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        challenges_path = os.path.join(dir_path, "challenges.txt")
-        with open(challenges_path) as f:
-            lines = f.readlines()
-        SETTINGS["CHALLENGE"] = random.choice(lines)
-
-        self.showImageControlButtons(False)
-        self.capture_button.setEnabled(True)
-        self.stackedWidget.setCurrentIndex(1)
 
     def templateSelected(self):
         global SETTINGS
@@ -414,11 +268,11 @@ class Window(QMainWindow, Ui_MainWindow):
             collage_dict = json.load(f)
             template = cv2.imread(os.path.join(dir_path, "ui","collages", collage_dict["filename"]))
             template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
-            SETTINGS["COLLAGE_TEMPLATE"] = template
-            SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
-        SETTINGS["COLLAGE_ID"] = 0
-        self.original_preview_time = SETTINGS["PREVIEW_TIME_SECONDS"]
-        SETTINGS["PREVIEW_TIME_SECONDS"] = 1                                   # only short preview during collag
+            globals.SETTINGS["COLLAGE_TEMPLATE"] = template
+            globals.SETTINGS["COLLAGE_POSITIONS"] = collage_dict["images"]
+        globals.SETTINGS["COLLAGE_ID"] = 0
+        self.original_preview_time = globals.SETTINGS["PREVIEW_TIME_SECONDS"]
+        globals.SETTINGS["PREVIEW_TIME_SECONDS"] = 1                                   # only short preview during collag
 
         self.showImageControlButtons(False)
         self.capture_button.setEnabled(True)
@@ -426,62 +280,65 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def captureButtonClicked(self):
         global SETTINGS
-        SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
+        globals.SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
         self.showImageControlButtons(False)
         self.work_requested.emit()
 
     def updateCountdown(self, secs_left):
+        logging.info(f"Countdown: {secs_left}")
         global SETTINGS
         if secs_left > 0:
-            file = os.path.join(os.path.dirname(__file__), SETTINGS["COUNTDOWN_SOUND"])
+            logging.info(f"More than 0 seconds left playing back sound")
+            file = os.path.join(os.path.dirname(__file__), globals.SETTINGS["COUNTDOWN_SOUND"])
             # not working on macos
             #subprocess.Popen(["aplay", file])
             self.capture_button.setIcon(QIcon())
             self.capture_button.setText(str(secs_left))
             self.stream.setStyleSheet(f"border: 5px solid white")               # blinking border
         elif secs_left == 0:                                                    # at capture
+            logging.info("Countdown finished")
             self.capture_button.setText("Click")
-        elif secs_left == -1:                                                     # after capture
+        elif secs_left == -1:
+            logging.info("Countdown at -1 resetting capture button?")                                                     # after capture
             self.capture_button.setText("")
             self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
-            if SETTINGS["COLLAGE_ID"] is None:
+            if globals.SETTINGS["COLLAGE_ID"] is None:
                 self.showImageControlButtons(True)
-        elif secs_left == -2:                                                 # after preview
-            if SETTINGS["SHOW_RECAPTURE"] == False:
+        elif secs_left == -2:
+            logging.info("countdown at -2 doing a lot of stuff...")                                                 # after preview
+            if globals.SETTINGS["SHOW_RECAPTURE"] == False:
                 self.stackedWidget.setCurrentIndex(0)
-            if SETTINGS["COLLAGE_ID"] is not None and \
-                SETTINGS["COLLAGE_ID"]+1 < len(SETTINGS["COLLAGE_POSITIONS"]):
-                SETTINGS["COLLAGE_ID"] += 1
+            if globals.SETTINGS["COLLAGE_ID"] is not None and \
+                globals.SETTINGS["COLLAGE_ID"]+1 < len(globals.SETTINGS["COLLAGE_POSITIONS"]):
+                globals.SETTINGS["COLLAGE_ID"] += 1
                 time.sleep(2)
                 switch_canon_to_liveview()
                 self.showImageControlButtons(False)
                 self.capture_button.setEnabled(True)
-            elif SETTINGS["COLLAGE_ID"] is not None and \
-                SETTINGS["COLLAGE_ID"]+1 == len(SETTINGS["COLLAGE_POSITIONS"]):
-                SETTINGS["FREEZE_STREAM"] = True
+            elif globals.SETTINGS["COLLAGE_ID"] is not None and \
+                globals.SETTINGS["COLLAGE_ID"]+1 == len(globals.SETTINGS["COLLAGE_POSITIONS"]):
+                globals.SETTINGS["FREEZE_STREAM"] = True
                 self.showImageControlButtons(True)
                 self.capture_button.setEnabled(False)
-                SETTINGS["FILE_NAME"] = os.path.join(SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-                collage = SETTINGS["COLLAGE_TEMPLATE"]
+                globals.SETTINGS["FILE_NAME"] = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+                collage = globals.SETTINGS["COLLAGE_TEMPLATE"]
                 collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(SETTINGS["FILE_NAME"], collage)
-                SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
-                SETTINGS["COLLAGE_TEMPLATE"] = None
+                cv2.imwrite(globals.SETTINGS["FILE_NAME"], collage)
+                globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+                globals.SETTINGS["COLLAGE_TEMPLATE"] = None
                 logging.info("Collage Finished")
-
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")
-        SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
-        SETTINGS["CHALLENGE"] = None
-        SETTINGS["COLLAGE_ID"] = None
+        globals.SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
+        globals.SETTINGS["COLLAGE_ID"] = None
 
         self.stackedWidget.setCurrentIndex(0)
     
     def deleteButtonClicked(self):
         logging.info("Delete last Photo")
         try:
-            os.remove(SETTINGS["FILE_NAME"])
+            os.remove(globals.SETTINGS["FILE_NAME"])
         except FileNotFoundError:
             pass
         self.homeButtonClicked()
@@ -489,7 +346,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def printButtonClicked(self):
         # use CUPS+Gutenprint to print Image via Selpy CP400
         logging.info("Printing photo")
-        subprocess.Popen(["lpr", "-P", SETTINGS["PRINTER_NAME"], SETTINGS["FILE_NAME"]])
+        subprocess.Popen(["lpr", "-P", globals.SETTINGS["PRINTER_NAME"], globals.SETTINGS["FILE_NAME"]])
 
     @pyqtSlot(QImage)
     def insertQRCode(self, image):
@@ -514,17 +371,16 @@ class Window(QMainWindow, Ui_MainWindow):
     def settingsClicked(self):
         logging.info("Go to settings")
         # init settings view with current values
-        self.lineEdit_welcome_message.setText(SETTINGS["WELCOME_MESSAGE"])
-        self.lineEdit_target_dir.setText(SETTINGS["TARGET_DIR"])
-        self.spinBox_countdown_time.setValue(SETTINGS["COUNTDOWN_TIME_SECONDS"])
-        self.spinBox_preview_time.setValue(SETTINGS["PREVIEW_TIME_SECONDS"])
-        self.checkBox_collage.setChecked(SETTINGS["SHOW_COLLAGE"])
-        self.checkBox_filter.setChecked(SETTINGS["SHOW_CHALLENGE"])
-        self.checkBox_delete.setChecked(SETTINGS["SHOW_DELETE"])
-        self.checkBox_recapture.setChecked(SETTINGS["SHOW_RECAPTURE"])
-        self.checkBox_print.setChecked(SETTINGS["SHOW_PRINT"])
-        self.checkBox_share.setChecked(SETTINGS["SHOW_SHARE"])
-        self.checkBox_button_text.setChecked(SETTINGS["SHOW_BUTTON_TEXT"])
+        self.lineEdit_welcome_message.setText(globals.SETTINGS["WELCOME_MESSAGE"])
+        self.lineEdit_target_dir.setText(globals.SETTINGS["TARGET_DIR"])
+        self.spinBox_countdown_time.setValue(globals.SETTINGS["COUNTDOWN_TIME_SECONDS"])
+        self.spinBox_preview_time.setValue(globals.SETTINGS["PREVIEW_TIME_SECONDS"])
+        self.checkBox_collage.setChecked(globals.SETTINGS["SHOW_COLLAGE"])
+        self.checkBox_delete.setChecked(globals.SETTINGS["SHOW_DELETE"])
+        self.checkBox_recapture.setChecked(globals.SETTINGS["SHOW_RECAPTURE"])
+        self.checkBox_print.setChecked(globals.SETTINGS["SHOW_PRINT"])
+        self.checkBox_share.setChecked(globals.SETTINGS["SHOW_SHARE"])
+        self.checkBox_button_text.setChecked(globals.SETTINGS["SHOW_BUTTON_TEXT"])
         self.stackedWidget.setCurrentIndex(3)
 
     def openFileDialog(self):
@@ -532,44 +388,55 @@ class Window(QMainWindow, Ui_MainWindow):
         if folderpath:
             self.lineEdit_target_dir.setText(folderpath)        
 
-    def enableStartButton(self):
-        self.start_button.setEnabled(True)
+    def enableStartButtons(self, value):
+        self.start_button.setVisible(value)
+        self.start_button.setEnabled(value)
+        if globals.SETTINGS["SHOW_COLLAGE"]:
+            self.collage_button.setVisible(value)
+            self.collage_button.setEnabled(value)
 
     def fillEmptySettingsWIthDefaults(self):
         global SETTINGS
      # check for empty settings and fill them with defaults according to the initialization of the SETTINGS object
         if "WELCOME_MESSAGE" not in SETTINGS:
-            SETTINGS["WELCOME_MESSAGE"] = DEFAULT_WELCOME_MESSAGE
+            globals.SETTINGS["WELCOME_MESSAGE"] = globals.DEFAULT_WELCOME_MESSAGE
         if "TARGET_DIR" not in SETTINGS:
-            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
+            globals.SETTINGS["TARGET_DIR"] = globals.DEFAULT_TARGET_DIR
         if "COUNTDOWN_TIME_SECONDS" not in SETTINGS:
-            SETTINGS["COUNTDOWN_TIME_SECONDS"] = DEFAULT_COUNTDOWN_TIME_SECONDS
+            globals.SETTINGS["COUNTDOWN_TIME_SECONDS"] = globals.DEFAULT_COUNTDOWN_TIME_SECONDS
         if "PREVIEW_TIME_SECONDS" not in SETTINGS:
-            SETTINGS["PREVIEW_TIME_SECONDS"] = DEFAULT_PREVIEW_TIME_SECONDS
+            globals.SETTINGS["PREVIEW_TIME_SECONDS"] = globals.DEFAULT_PREVIEW_TIME_SECONDS
         if "SHOW_COLLAGE" not in SETTINGS:
-            SETTINGS["SHOW_COLLAGE"] = DEFAULT_SHOW_COLLAGE
+            globals.SETTINGS["SHOW_COLLAGE"] = globals.DEFAULT_SHOW_COLLAGE
         if "SHOW_DELETE" not in SETTINGS:
-            SETTINGS["SHOW_DELETE"] = DEFAULT_SHOW_DELETE
+            globals.SETTINGS["SHOW_DELETE"] = globals.DEFAULT_SHOW_DELETE
         if "SHOW_RECAPTURE" not in SETTINGS:
-            SETTINGS["SHOW_RECAPTURE"] = DEFAULT_SHOW_RECAPTURE
+            globals.SETTINGS["SHOW_RECAPTURE"] = globals.DEFAULT_SHOW_RECAPTURE
         if "SHOW_PRINT" not in SETTINGS:
-            SETTINGS["SHOW_PRINT"] = DEFAULT_SHOW_PRINT
+            globals.SETTINGS["SHOW_PRINT"] = globals.DEFAULT_SHOW_PRINT
         if "SHOW_SHARE" not in SETTINGS:
-            SETTINGS["SHOW_SHARE"] = DEFAULT_SHOW_SHARE
+            globals.SETTINGS["SHOW_SHARE"] = globals.DEFAULT_SHOW_SHARE
         if "SHOW_BUTTON_TEXT" not in SETTINGS:
-            SETTINGS["SHOW_BUTTON_TEXT"] = DEFAULT_SHOW_BUTTON_TEXT
-        if "SHOW_CHALLENGE" not in SETTINGS:
-            SETTINGS["SHOW_CHALLENGE"] = DEFAULT_SHOW_CHALLENGE
+            globals.SETTINGS["SHOW_BUTTON_TEXT"] = globals.DEFAULT_SHOW_BUTTON_TEXT
         if "BACKGROUND_IMAGE" not in SETTINGS:
-            SETTINGS["BACKGROUND_IMAGE"] = DEFAULT_BACKGROUND_IMAGE
+            globals.SETTINGS["BACKGROUND_IMAGE"] = globals.DEFAULT_BACKGROUND_IMAGE
         if "CAMERA_INDEX" not in SETTINGS:
-            SETTINGS["CAMERA_INDEX"] = DEFAULT_CAMERA_INDEX
+            globals.SETTINGS["CAMERA_INDEX"] = globals.DEFAULT_CAMERA_INDEX
         if "COUNTDOWN_SOUND" not in SETTINGS:
-            SETTINGS["COUNTDOWN_SOUND"] = DEFAULT_COUNTDOWN_SOUND
+            globals.SETTINGS["COUNTDOWN_SOUND"] = globals.DEFAULT_COUNTDOWN_SOUND
         if "WELCOME_TEXT_COLOR" not in SETTINGS:
-            SETTINGS["WELCOME_TEXT_COLOR"] = DEFAULT_WELCOME_TEXT_COLOR
+            globals.SETTINGS["WELCOME_TEXT_COLOR"] = globals.DEFAULT_WELCOME_TEXT_COLOR
         if "IMAGE_BORDER_COLOR" not in SETTINGS:
-            SETTINGS["IMAGE_BORDER_COLOR"] = DEFAULT_IMAGE_BORDER_COLOR
+            globals.SETTINGS["IMAGE_BORDER_COLOR"] = globals.DEFAULT_IMAGE_BORDER_COLOR
+
+    def show_loading_spinner(self):
+        self.loading_label.show()
+        self.loading_movie.start()
+
+    def hide_loading_spinner(self):
+        self.loading_movie.stop()
+        self.loading_label.hide()
+
 
     def loadSettings(self):
         # load the settings from yaml to globals to use them as variables
@@ -609,35 +476,33 @@ class Window(QMainWindow, Ui_MainWindow):
                     logging.error(exc)
 
         # init some variables
-        SETTINGS["FILE_NAME"] = ""                          # holds last filename
-        SETTINGS["FREEZE_STREAM"] = False
-        SETTINGS["COLLAGE_TEMPLATE"] = None
-        SETTINGS["COLLAGE_ID"] = None
-        SETTINGS["CHALLENGE"] = None
+        globals.SETTINGS["FILE_NAME"] = ""                          # holds last filename
+        globals.SETTINGS["FREEZE_STREAM"] = False
+        globals.SETTINGS["COLLAGE_TEMPLATE"] = None
+        globals.SETTINGS["COLLAGE_ID"] = None
 
         # create the target dir if necessary
         try:
-            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
+            os.makedirs(globals.SETTINGS["TARGET_DIR"],exist_ok=True)
         except PermissionError:
-            logging.error(f"Couldn't create {SETTINGS['TARGET_DIR']}")
-            SETTINGS["TARGET_DIR"] = DEFAULT_TARGET_DIR
-            os.makedirs(SETTINGS["TARGET_DIR"],exist_ok=True)
-            logging.error(f"Using {SETTINGS['TARGET_DIR']} instead")
+            logging.error(f"Couldn't create {globals.SETTINGS['TARGET_DIR']}")
+            globals.SETTINGS["TARGET_DIR"] = globals.DEFAULT_TARGET_DIR
+            os.makedirs(globals.SETTINGS["TARGET_DIR"],exist_ok=True)
+            logging.error(f"Using {globals.SETTINGS['TARGET_DIR']} instead")
 
     def saveSettings(self):
         global SETTINGS
 
-        SETTINGS["WELCOME_MESSAGE"] = self.lineEdit_welcome_message.text()
-        SETTINGS["TARGET_DIR"] = self.lineEdit_target_dir.text()
-        SETTINGS["COUNTDOWN_TIME_SECONDS"] = self.spinBox_countdown_time.value()
-        SETTINGS["PREVIEW_TIME_SECONDS"] = self.spinBox_preview_time.value()
-        SETTINGS["SHOW_COLLAGE"] = self.checkBox_collage.isChecked()
-        SETTINGS["SHOW_CHALLENGE"] = self.checkBox_filter.isChecked()
-        SETTINGS["SHOW_DELETE"] = self.checkBox_delete.isChecked()
-        SETTINGS["SHOW_RECAPTURE"] = self.checkBox_recapture.isChecked()
-        SETTINGS["SHOW_PRINT"] = self.checkBox_print.isChecked()
-        SETTINGS["SHOW_SHARE"] = self.checkBox_share.isChecked()
-        SETTINGS["SHOW_BUTTON_TEXT"] = self.checkBox_button_text.isChecked()
+        globals.SETTINGS["WELCOME_MESSAGE"] = self.lineEdit_welcome_message.text()
+        globals.SETTINGS["TARGET_DIR"] = self.lineEdit_target_dir.text()
+        globals.SETTINGS["COUNTDOWN_TIME_SECONDS"] = self.spinBox_countdown_time.value()
+        globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.spinBox_preview_time.value()
+        globals.SETTINGS["SHOW_COLLAGE"] = self.checkBox_collage.isChecked()
+        globals.SETTINGS["SHOW_DELETE"] = self.checkBox_delete.isChecked()
+        globals.SETTINGS["SHOW_RECAPTURE"] = self.checkBox_recapture.isChecked()
+        globals.SETTINGS["SHOW_PRINT"] = self.checkBox_print.isChecked()
+        globals.SETTINGS["SHOW_SHARE"] = self.checkBox_share.isChecked()
+        globals.SETTINGS["SHOW_BUTTON_TEXT"] = self.checkBox_button_text.isChecked()
 
         with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "w") as outfile:
             try:
@@ -650,8 +515,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.refreshWelcomeText()
         self.setRecaptureMode()
         self.overlay_buttons_on_stream()
-        self.collage_button.setVisible(SETTINGS["SHOW_COLLAGE"])
-        self.challenge_button.setVisible(SETTINGS["SHOW_CHALLENGE"])
         self.stackedWidget.setCurrentIndex(0)
 
     def shutdown(self):
@@ -659,9 +522,8 @@ class Window(QMainWindow, Ui_MainWindow):
         QApplication.quit()
     
 
-        
-
 if __name__ == "__main__":
+    globals.init()
     logging.basicConfig(filename="photobox.log",
                     filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
@@ -679,5 +541,4 @@ if __name__ == "__main__":
         win.showFullScreen()
     else:
         win.show()
-    #win.showFullScreen()
     sys.exit(app.exec())
