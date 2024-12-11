@@ -81,7 +81,7 @@ class StreamThread(QThread):
             if not ret:
                 continue
 
-            if not globals.SETTINGS["FREEZE_STREAM"]:
+            if not globals.FREEZE_STREAM:
                 frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
             elif os.path.isfile(globals.SETTINGS["FILE_NAME"]):
                 frame = cv2.imread(globals.SETTINGS["FILE_NAME"])
@@ -155,6 +155,9 @@ class Window(QMainWindow, Ui_MainWindow):
         self.worker = CaptureWorker()
         self.worker_thread = QThread()
         self.worker.progress.connect(self.updateCountdown)
+        self.worker.capture_finished.connect(self.capture_finished)
+        self.worker.preview_finished.connect(self.on_preview_finished)
+        self.worker.capture_error.connect(self.capture_error)
         self.work_requested.connect(self.worker.run)
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
@@ -246,6 +249,10 @@ class Window(QMainWindow, Ui_MainWindow):
     def setImage(self, image):
         self.stream.setPixmap(QPixmap.fromImage(image))
 
+    def capture_error(self, error):
+        logging.error(error)
+        self.showImageControlButtons(True)
+
     def startButtonClicked(self):
         logging.info("Start Button pressed")
         switch_canon_to_liveview()
@@ -259,7 +266,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(4)
 
     def templateSelected(self):
-        global SETTINGS
         logging.info("Template was selected")
         switch_canon_to_liveview()
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -279,14 +285,12 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stackedWidget.setCurrentIndex(1)
 
     def captureButtonClicked(self):
-        global SETTINGS
-        globals.SETTINGS["FREEZE_STREAM"] = False                                       # stops the preview
+        globals.FREEZE_STREAM = False                                       # stops the preview
         self.showImageControlButtons(False)
         self.work_requested.emit()
 
     def updateCountdown(self, secs_left):
         logging.info(f"Countdown: {secs_left}")
-        global SETTINGS
         if secs_left > 0:
             logging.info(f"More than 0 seconds left playing back sound")
             file = os.path.join(os.path.dirname(__file__), globals.SETTINGS["COUNTDOWN_SOUND"])
@@ -298,39 +302,41 @@ class Window(QMainWindow, Ui_MainWindow):
         elif secs_left == 0:                                                    # at capture
             logging.info("Countdown finished")
             self.capture_button.setText("Click")
-        elif secs_left == -1:
-            logging.info("Countdown at -1 resetting capture button?")                                                     # after capture
-            self.capture_button.setText("")
-            self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
-            if globals.SETTINGS["COLLAGE_ID"] is None:
-                self.showImageControlButtons(True)
-        elif secs_left == -2:
-            logging.info("countdown at -2 doing a lot of stuff...")                                                 # after preview
-            if globals.SETTINGS["SHOW_RECAPTURE"] == False:
-                self.stackedWidget.setCurrentIndex(0)
-            if globals.SETTINGS["COLLAGE_ID"] is not None and \
-                globals.SETTINGS["COLLAGE_ID"]+1 < len(globals.SETTINGS["COLLAGE_POSITIONS"]):
-                globals.SETTINGS["COLLAGE_ID"] += 1
-                time.sleep(2)
-                switch_canon_to_liveview()
-                self.showImageControlButtons(False)
-                self.capture_button.setEnabled(True)
-            elif globals.SETTINGS["COLLAGE_ID"] is not None and \
-                globals.SETTINGS["COLLAGE_ID"]+1 == len(globals.SETTINGS["COLLAGE_POSITIONS"]):
-                globals.SETTINGS["FREEZE_STREAM"] = True
-                self.showImageControlButtons(True)
-                self.capture_button.setEnabled(False)
-                globals.SETTINGS["FILE_NAME"] = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-                collage = globals.SETTINGS["COLLAGE_TEMPLATE"]
-                collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(globals.SETTINGS["FILE_NAME"], collage)
-                globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
-                globals.SETTINGS["COLLAGE_TEMPLATE"] = None
-                logging.info("Collage Finished")
+        
+    def capture_finished(self):
+        logging.info("Countdown at -1 resetting capture button?")                                                     # after capture
+        self.capture_button.setText("")
+        self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
+        if globals.SETTINGS["COLLAGE_ID"] is None:
+            self.showImageControlButtons(True)
+
+
+    def on_preview_finished(self):
+        if globals.SETTINGS["SHOW_RECAPTURE"] == False:
+            self.stackedWidget.setCurrentIndex(0)
+        if globals.SETTINGS["COLLAGE_ID"] is not None and \
+            globals.SETTINGS["COLLAGE_ID"]+1 < len(globals.SETTINGS["COLLAGE_POSITIONS"]):
+            globals.SETTINGS["COLLAGE_ID"] += 1
+            time.sleep(2)
+            switch_canon_to_liveview()
+            self.showImageControlButtons(False)
+            self.capture_button.setEnabled(True)
+        elif globals.SETTINGS["COLLAGE_ID"] is not None and \
+            globals.SETTINGS["COLLAGE_ID"]+1 == len(globals.SETTINGS["COLLAGE_POSITIONS"]):
+            globals.FREEZE_STREAM = True
+            self.showImageControlButtons(True)
+            self.capture_button.setEnabled(False)
+            globals.SETTINGS["FILE_NAME"] = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+            collage = globals.SETTINGS["COLLAGE_TEMPLATE"]
+            collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(globals.SETTINGS["FILE_NAME"], collage)
+            globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+            globals.SETTINGS["COLLAGE_TEMPLATE"] = None
+            logging.info("Collage Finished")
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")
-        globals.SETTINGS["FREEZE_STREAM"] = False                                       # stops eventually running preview countdown
+        globals.FREEZE_STREAM = False                                       # stops eventually running preview countdown
         globals.SETTINGS["COLLAGE_ID"] = None
 
         self.stackedWidget.setCurrentIndex(0)
@@ -477,7 +483,6 @@ class Window(QMainWindow, Ui_MainWindow):
 
         # init some variables
         globals.SETTINGS["FILE_NAME"] = ""                          # holds last filename
-        globals.SETTINGS["FREEZE_STREAM"] = False
         globals.SETTINGS["COLLAGE_TEMPLATE"] = None
         globals.SETTINGS["COLLAGE_ID"] = None
 

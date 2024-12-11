@@ -9,6 +9,10 @@ import globals
 
 class CaptureWorker(QObject):
     progress = pyqtSignal(int)
+    capture_finished = pyqtSignal()
+    preview_finished = pyqtSignal()
+    countdown = 0
+    capture_error = pyqtSignal(str)
 
     def __init__ (self):
         super().__init__()
@@ -16,21 +20,19 @@ class CaptureWorker(QObject):
         self.preview_timer.timeout.connect(self.on_preview_finished)
         self.preview_countdown = globals.SETTINGS["PREVIEW_TIME_SECONDS"]*1000
 
-    @pyqtSlot()
-    def run(self):
-        global SETTINGS
+        self.countdown_timer = QTimer()
+        self.countdown_timer.timeout.connect(self.countdown_elapsed)
 
-        if globals.CURRENT_CAMERA is None:
-            logging.error("Camera is not detected yet. Unable to take a photo")
-            self.progress.emit(-2)
-            return
-        
-        logging.info("Countdown started")
-        #subprocess.Popen(["gphoto2", "--reset"])
-        for secs_left in range(globals.SETTINGS["COUNTDOWN_TIME_SECONDS"], 0, -1):
-            self.progress.emit(secs_left)
-            time.sleep(1)
+    def countdown_elapsed(self):
+        self.countdown -= 1
 
+        if self.countdown < 0:
+            self.countdown_timer.stop()
+            self.capture_image()
+        else:
+            self.progress.emit(self.countdown)
+
+    def capture_image(self):
         logging.info('Capturing image')
         globals.SETTINGS["FILE_NAME"] = os.path.join(globals.SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
 
@@ -46,33 +48,33 @@ class CaptureWorker(QObject):
         # check exit code of captureProc
         if captureProc.returncode != None and captureProc.returncode != 0:
             logging.error(f"Error capturing image: {captureProc}")
+            self.capture_error.emit("Error capturing image")
             return
-        
-        # send 0 for "click"
-        self.progress.emit(1)
-        time.sleep(1)
-        self.progress.emit(0)
-        globals.SETTINGS["FREEZE_STREAM"] = True
 
-        # TODO introduce timeout for waiting for file
+        globals.FREEZE_STREAM = True
+
+        # TODO introduce timeout for waiting for file also maybe use timer?
         # wait for image to transfer from camera to device
         while not os.path.isfile(globals.SETTINGS["FILE_NAME"]):
             time.sleep(0.2)
 
-        # and -1 for shutter icon
-        self.progress.emit(-1)
-        
-        logging.info('Showing preview')
-        
+        # start the preview countdown timer
         self.start_preview_countdown()
+        
 
-        logging.info("preview time finished. Returning to start screen")
+    @pyqtSlot()
+    def run(self):
+        global SETTINGS
 
-        logging.info("preview time finished. Returning to start screen 2222")
+        if globals.CURRENT_CAMERA is None:
+            logging.error("Camera is not detected yet. Unable to take a photo")
+            self.capture_error.emit("Camera is not detected yet. Unable to take a photo")
+            return
+        
+        self.countdown = globals.SETTINGS["COUNTDOWN_TIME_SECONDS"]
+        logging.info("Countdown started")
+        self.countdown_timer.start(1000)
 
-        globals.SETTINGS["FREEZE_STREAM"] = False
-        logging.info("emitting -2")
-        self.progress.emit(-2)
 
     def start_preview_countdown(self):
         self.preview_timer.start(self.preview_countdown)  
@@ -92,7 +94,6 @@ class CaptureWorker(QObject):
                 return
 
     def on_preview_finished(self):
+        self.preview_timer.stop()
         logging.info("preview time finished. Returning to start screen")
-        globals.SETTINGS["FREEZE_STREAM"] = False
-        logging.info("emitting -2")
-        self.progress.emit(-2)
+        self.preview_finished.emit()
