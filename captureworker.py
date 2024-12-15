@@ -19,7 +19,7 @@ class CaptureWorker(QObject):
     countdown_timer = None
 
     def countdown_elapsed(self):
-        if self.countdown < 0:
+        if self.countdown == 0:
             self.countdown_timer.stop()
             self.run_async(self.capture_image())
         else:
@@ -30,6 +30,8 @@ class CaptureWorker(QObject):
     async def capture_image(self):
         logging.info('Capturing image')
         globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "photobox_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        
+        logging.info(f"Capturing image to {globals.FILE_NAME}")
 
         logging.info("Starting capture")
         args = ["gphoto2", "--filename",globals.FILE_NAME, "--capture-image-and-download", "--force-overwrite", "--keep", "--camera", globals.CURRENT_CAMERA]
@@ -79,6 +81,11 @@ class CaptureWorker(QObject):
         self.countdown_timer = QTimer()
         self.countdown_timer.setInterval(1000)
         self.countdown_timer.timeout.connect(self.countdown_elapsed)
+
+        # manually trigger first countdown_elapsed call
+        self.progress.emit(self.countdown)
+        self.countdown -= 1
+
         self.countdown_timer.start()
 
 
@@ -107,9 +114,10 @@ class CaptureWorker(QObject):
         logging.info("preview time finished. Returning to start screen")
         self.preview_finished.emit()
 
-    async def wait_for_file(file_path, check_interval=1):
+    async def wait_for_file(self,file_path, check_interval=1):
+        logging.info(f"Waiting for file {file_path} to be present")
         while True:
-            if await aiofiles.os.path.exists(file_path):
+            if os.path.exists(file_path):
                 return True
             await asyncio.sleep(check_interval)
 
