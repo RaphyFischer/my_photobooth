@@ -336,6 +336,8 @@ class Window(QMainWindow, Ui_MainWindow):
             globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
             globals.SETTINGS["COLLAGE_TEMPLATE"] = None
             logging.info("Collage Finished")
+        else:
+           self.homeButtonClicked()
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")

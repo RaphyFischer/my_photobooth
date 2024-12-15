@@ -60,6 +60,7 @@ class CaptureWorker(QObject):
 
         # start the preview countdown timer
         self.start_preview_countdown()
+        self.capture_finished.emit()
         
 
     @pyqtSlot()
