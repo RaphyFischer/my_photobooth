@@ -1,6 +1,6 @@
 # Settings Button is hidden behind welcome message
 # Settings can be reached by long pressig (https://stackoverflow.com/a/13851527) the text in the label
-from PyQt5 import QtWidgets, QtCore
+from PyQt6 import QtWidgets, QtCore
 
 class SettingsButton(QtWidgets.QPushButton):
     longclicked = QtCore.pyqtSignal(bool)

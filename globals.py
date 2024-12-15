@@ -42,3 +42,6 @@ def init():
 
     global FREEZE_STREAM
     FREEZE_STREAM = False
+
+    global FILE_NAME
+    FILE_NAME = ""

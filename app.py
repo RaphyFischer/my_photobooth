@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys, os, time, yaml, json, random
 from datetime import datetime
@@ -8,16 +9,17 @@ from PIL import Image, ImageFont, ImageDraw
 import qrcode
 import numpy as np
 import zc.lockfile
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
-from PyQt5.QtGui import QImage, QMovie, QPixmap, QIcon, QFontDatabase, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
+from PyQt6.QtGui import QImage, QPixmap, QIcon, QFontDatabase, QColor
+from PyQt6.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
 from cameraInitializer import CameraInitializer
 import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
 import globals
+import resources_rc
 
 # prevent application from running twice
 lock = zc.lockfile.LockFile('lock')
@@ -39,7 +41,7 @@ class UploadThread(QThread):
     def run(self):
         # share file via link
         try:
-            file_id = share_gdrive.upload_image(globals.SETTINGS["FILE_NAME"])
+            file_id = share_gdrive.upload_image(globals.FILE_NAME)
             link = share_gdrive.share_image(file_id)
             logging.info(f"Image uploaded to {link}")
 
@@ -55,7 +57,7 @@ class UploadThread(QThread):
 
             img = qr.make_image(fill_color=(247, 244, 183), back_color=(42, 49, 65))
             img = np.array(img.resize((600,600), Image.NEAREST))
-            qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format_RGB888)
+            qt_img = QImage(img.data, img.shape[1], img.shape[0], img.shape[1]*img.shape[2], QImage.Format.Format_RGB888)
             self.changePixmap.emit(qt_img)
         except:
             logging.error("Upload failed")
@@ -64,7 +66,8 @@ class StreamThread(QThread):
     changePixmap = pyqtSignal(QImage)
 
     def run(self):
-        height, width, channel = 720, 1280, 3
+        #height, width, channel = 720, 1280, 3
+        height, width, channel = 525, 840, 3
         scale = 1.6
         cropped_width = int(3*height/2)                     #crop black borders of 16:9 monitor
         width_to_crop = width-cropped_width
@@ -83,10 +86,10 @@ class StreamThread(QThread):
 
             if not globals.FREEZE_STREAM:
                 frame = frame[:,int(width_to_crop/2):int(width-(width_to_crop/2)),:].copy()
-            elif os.path.isfile(globals.SETTINGS["FILE_NAME"]):
-                frame = cv2.imread(globals.SETTINGS["FILE_NAME"])
+            elif os.path.isfile(globals.FILE_NAME):
+                frame = cv2.imread(globals.FILE_NAME)
                 # collages are saved "unflipped"! -> Flip twice here
-                if "collage" in globals.SETTINGS["FILE_NAME"]:
+                if "collage" in globals.FILE_NAME:
                     frame = cv2.flip(frame, 1)
             else:
                 continue
@@ -104,7 +107,7 @@ class StreamThread(QThread):
                 rgbImage = collageImage
 
             rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
-            convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format_RGB888)
+            convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format.Format_RGB888)
             self.changePixmap.emit(convertToQtFormat)
 
 
@@ -196,7 +199,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 item.setText(f[:-4])
                 item.setForeground(QColor(247, 244, 183))
                 icon = QIcon()
-                icon.addPixmap(QPixmap(os.path.join(collages_path, f)), QIcon.Normal, QIcon.Off)
+                icon.addPixmap(QPixmap(os.path.join(collages_path, f)), QIcon.Mode.Normal, QIcon.State.Off)
                 item.setIcon(icon)
                 self.templateListWidget.addItem(item)
         self.templateListWidget.setIconSize(QtCore.QSize(540, 360))
@@ -210,13 +213,13 @@ class Window(QMainWindow, Ui_MainWindow):
     def setRecaptureMode(self):
         # if recapture is activated show home button in photo view else show save button
         icon = QIcon()
-        if globals.SETTINGS["SHOW_RECAPTURE"]:icon.addPixmap(QPixmap(":/files/icons/home.png"), QIcon.Normal, QIcon.Off)
-        else: icon.addPixmap(QPixmap(":/files/icons/save.png"), QIcon.Normal, QIcon.Off)
+        if globals.SETTINGS["SHOW_RECAPTURE"]:icon.addPixmap(QPixmap(":/files/icons/home.png"), QIcon.Mode.Normal, QIcon.State.Off)
+        else: icon.addPixmap(QPixmap(":/files/icons/save.png"), QIcon.Mode.Normal, QIcon.State.Off)
         self.home_button.setIcon(icon)
 
     def overlay_buttons_on_stream(self):
-        spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        spacer_vert = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacer_vert = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.photo_page_grid.addItem(spacer, 0, 0, 0, 1)                                # used to reduce the gap between border and image. Vertical is not working so adjust bottom margin of photo_page
         self.photo_page_grid.addWidget(self.stream, 0, 1,0,1)
         self.photo_page_grid.addItem(spacer, 0, 2, 0, 1)
@@ -250,8 +253,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.stream.setPixmap(QPixmap.fromImage(image))
 
     def capture_error(self, error):
-        logging.error(error)
-        self.showImageControlButtons(True)
+        logging.error(f"Error during image capture process. Returning to home screen. Error: {error}")
+        self.homeButtonClicked()
 
     def startButtonClicked(self):
         logging.info("Start Button pressed")
@@ -326,10 +329,10 @@ class Window(QMainWindow, Ui_MainWindow):
             globals.FREEZE_STREAM = True
             self.showImageControlButtons(True)
             self.capture_button.setEnabled(False)
-            globals.SETTINGS["FILE_NAME"] = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+            globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
             collage = globals.SETTINGS["COLLAGE_TEMPLATE"]
             collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(globals.SETTINGS["FILE_NAME"], collage)
+            cv2.imwrite(globals.FILE_NAME, collage)
             globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
             globals.SETTINGS["COLLAGE_TEMPLATE"] = None
             logging.info("Collage Finished")
@@ -344,7 +347,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def deleteButtonClicked(self):
         logging.info("Delete last Photo")
         try:
-            os.remove(globals.SETTINGS["FILE_NAME"])
+            os.remove(globals.FILE_NAME)
         except FileNotFoundError:
             pass
         self.homeButtonClicked()
@@ -352,7 +355,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def printButtonClicked(self):
         # use CUPS+Gutenprint to print Image via Selpy CP400
         logging.info("Printing photo")
-        subprocess.Popen(["lpr", "-P", globals.SETTINGS["PRINTER_NAME"], globals.SETTINGS["FILE_NAME"]])
+        subprocess.Popen(["lpr", "-P", globals.SETTINGS["PRINTER_NAME"],globals.FILE_NAME])
 
     @pyqtSlot(QImage)
     def insertQRCode(self, image):
@@ -482,7 +485,6 @@ class Window(QMainWindow, Ui_MainWindow):
                     logging.error(exc)
 
         # init some variables
-        globals.SETTINGS["FILE_NAME"] = ""                          # holds last filename
         globals.SETTINGS["COLLAGE_TEMPLATE"] = None
         globals.SETTINGS["COLLAGE_ID"] = None
 
@@ -535,15 +537,15 @@ if __name__ == "__main__":
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
 
-
     app = QApplication(sys.argv)
     QFontDatabase.addApplicationFont(os.path.join(os.path.dirname(__file__), "ui/font/Oxanium-Bold.ttf"))
     win = Window()
-    #win.resize(1280, 720)
+    #win.resize(1280, 800)
 
     # show window in fullscreen if -fullscreen is passed as argument
     if "-fullscreen" in sys.argv:
         win.showFullScreen()
     else:
         win.show()
+
     sys.exit(app.exec())

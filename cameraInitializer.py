@@ -1,5 +1,5 @@
 import logging
-from PyQt5.QtCore import QThread, pyqtSlot, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSlot, pyqtSignal
 import time
 import subprocess, re
 import globals

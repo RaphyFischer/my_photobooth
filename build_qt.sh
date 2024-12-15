@@ -1,3 +1,3 @@
-pyuic5 ui/mainwindow.ui -o MainWindow.py
-pyrcc5 ui/resources.qrc -o resources_rc.py
-python3 app.py 
+pyuic6 ui/mainwindow.ui -o MainWindow.py
+pyside6-rcc -o resources_rc.py ui/resources.qrc
+python3 app.py

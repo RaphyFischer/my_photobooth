@@ -1,5 +1,6 @@
 opencv-python-headless
-pyqt5
+pyqt6
+PySide6
 qrcode
 google-api-python-client
 google-auth-httplib2
@@ -9,3 +10,4 @@ pillow
 pyyaml
 pyuic5-tool
 opencv-python
+aiofiles
