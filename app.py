@@ -341,6 +341,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")
+        self.worker.cancel_preview_timer()
         globals.FREEZE_STREAM = False                                       # stops eventually running preview countdown
         globals.SETTINGS["COLLAGE_ID"] = None
 

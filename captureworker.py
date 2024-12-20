@@ -2,8 +2,9 @@ from datetime import datetime
 import logging
 import os
 import subprocess
+from threading import Timer
 import time
-from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer, QObject
+from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QObject
 import globals
 import asyncio
 import aiofiles
@@ -18,13 +19,20 @@ class CaptureWorker(QObject):
     capture_error = pyqtSignal(str)
     countdown_timer = None
 
+    def cancel_preview_timer(self):
+        if self.preview_timer is not None:
+            self.preview_timer.cancel()
+
     def countdown_elapsed(self):
         if self.countdown == 0:
-            self.countdown_timer.stop()
+            self.countdown_timer.cancel()
+            self.countdown_timer = None
             self.run_async(self.capture_image())
         else:
             self.progress.emit(self.countdown)
             self.countdown -= 1
+            self.countdown_timer = Timer(1,self.countdown_elapsed)
+            self.countdown_timer.start()
 
 
     async def capture_image(self):
@@ -76,12 +84,12 @@ class CaptureWorker(QObject):
 
         # set back timer in case there is still one active
         if self.countdown_timer is not None and self.countdown_timer.isActive():
-            self.countdown_timer.stop()
+            self.countdown_timer.cancel()
             self.countdown_timer = None
 
-        self.countdown_timer = QTimer()
-        self.countdown_timer.setInterval(1000)
-        self.countdown_timer.timeout.connect(self.countdown_elapsed)
+        self.countdown_timer = Timer(1,self.countdown_elapsed)
+        #self.countdown_timer.setInterval(1000)
+        #self.countdown_timer.timeout.connect()
 
         # manually trigger first countdown_elapsed call
         self.progress.emit(self.countdown)
@@ -91,10 +99,8 @@ class CaptureWorker(QObject):
 
 
     def start_preview_countdown(self):
-        self.preview_timer = QTimer()
-        self.preview_timer.timeout.connect(self.on_preview_finished)
-        self.preview_countdown = globals.SETTINGS["PREVIEW_TIME_SECONDS"]*1000
-        self.preview_timer.start(self.preview_countdown)  
+        self.preview_timer = Timer(globals.SETTINGS["PREVIEW_TIME_SECONDS"],self.on_preview_finished)
+        self.preview_timer.start()  
 
     def ensureTargetDirExists(self):
         # check if target dir exists if not existing create it. If creation fails use default dir
@@ -111,7 +117,8 @@ class CaptureWorker(QObject):
                 return
 
     def on_preview_finished(self):
-        self.preview_timer.stop()
+        self.preview_timer.cancel()
+        self.preview_timer = None
         logging.info("preview time finished. Returning to start screen")
         self.preview_finished.emit()
 
