@@ -1,3 +1,8 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import List
+
+
 DEFAULT_WELCOME_MESSAGE = "Willkommen zur Fotobox"
 DEFAULT_TARGET_DIR = "data/images"
 DEFAULT_COUNTDOWN_TIME_SECONDS = 5
@@ -45,3 +50,37 @@ def init():
 
     global FILE_NAME
     FILE_NAME = ""
+    
+    global CAPTURE_MODE
+    CAPTURE_MODE = None
+    
+    global CURRENT_COLLAGE
+    CURRENT_COLLAGE = None
+    
+class CaptureMode(Enum):
+    SINGLE = 1
+    COLLAGE = 2
+    
+@dataclass
+class Coordinates:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+@dataclass
+class Size:
+    width: int
+    height: int
+
+@dataclass
+class ImagePosition:
+    id: int
+    position: Coordinates
+    size: Size
+    imagePath: str = None
+
+@dataclass
+class Collage:
+    name: str
+    images: List[ImagePosition]
+    currentImage: int = 0

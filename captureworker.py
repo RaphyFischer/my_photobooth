@@ -7,7 +7,6 @@ import time
 from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, QObject
 import globals
 import asyncio
-import aiofiles
 import PySide6.QtAsyncio as QtAsyncio
 
 
@@ -66,8 +65,9 @@ class CaptureWorker(QObject):
             self.capture_error.emit()
             return
 
-        # start the preview countdown timer
-        self.start_preview_countdown()
+        # only show preview if in single mode or last image of collage
+        if globals.CAPTURE_MODE == globals.CaptureMode.SINGLE or  globals.CURRENT_COLLAGE is not None and globals.CURRENT_COLLAGE.currentImage == len(globals.CURRENT_COLLAGE.images) - 1:
+            self.start_preview_countdown()
         self.capture_finished.emit()
         
 
@@ -88,8 +88,6 @@ class CaptureWorker(QObject):
             self.countdown_timer = None
 
         self.countdown_timer = Timer(1,self.countdown_elapsed)
-        #self.countdown_timer.setInterval(1000)
-        #self.countdown_timer.timeout.connect()
 
         # manually trigger first countdown_elapsed call
         self.progress.emit(self.countdown)

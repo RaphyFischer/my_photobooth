@@ -89,23 +89,13 @@ class StreamThread(QThread):
             elif os.path.isfile(globals.FILE_NAME):
                 frame = cv2.imread(globals.FILE_NAME)
                 # collages are saved "unflipped"! -> Flip twice here
-                if "collage" in globals.FILE_NAME:
-                    frame = cv2.flip(frame, 1)
+                # if "collage" in globals.FILE_NAME:
+                #     frame = cv2.flip(frame, 1)
             else:
                 continue
+            
             frame = cv2.flip(frame, 1)
             rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            if globals.SETTINGS["COLLAGE_TEMPLATE"] is not None:
-                collageImage = globals.SETTINGS["COLLAGE_TEMPLATE"]
-                positionInfo = globals.SETTINGS["COLLAGE_POSITIONS"][globals.SETTINGS["COLLAGE_ID"]]
-                xcenter, ycenter = positionInfo["position"]
-                w, h = positionInfo["size"]
-                collageImage[ycenter-int(h/2):ycenter+int(h/2), xcenter-int(w/2):xcenter+int(w/2)] = \
-                    cv2.resize(rgbImage, positionInfo["size"], interpolation = cv2.INTER_AREA)
-                globals.SETTINGS["COLLAGE_TEMPLATE"] = collageImage
-                rgbImage = collageImage
-
             rgbImage_resized = cv2.resize(rgbImage, (scaled_width, scaled_height), interpolation = cv2.INTER_AREA)
             convertToQtFormat = QImage(rgbImage_resized.data, scaled_width, scaled_height, channel*scaled_width, QImage.Format.Format_RGB888)
             self.changePixmap.emit(convertToQtFormat)
@@ -258,6 +248,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def startButtonClicked(self):
         logging.info("Start Button pressed")
+        globals.CAPTURE_MODE = globals.CaptureMode.SINGLE
         switch_canon_to_liveview()
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
@@ -266,7 +257,16 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def collageButtonClicked(self):
         logging.info("Start Collage clicked")
-        self.stackedWidget.setCurrentIndex(4)
+        globals.CAPTURE_MODE = globals.CaptureMode.COLLAGE
+        globals.CURRENT_COLLAGE = globals.Collage("Beach.png", [
+            globals.ImagePosition(1, globals.Coordinates(1500, 440), globals.Size(780, 520)),
+            #globals.ImagePosition(2, (547, 1200), (780, 520)),
+            #globals.ImagePosition(3, (1500, 1200), (780, 520)),
+        ])
+        self.showImageControlButtons(False)
+        self.stackedWidget.setCurrentIndex(1)
+        self.capture_button.setEnabled(True)
+        self.capture_button.setVisible(True)
 
     def templateSelected(self):
         logging.info("Template was selected")
@@ -310,34 +310,62 @@ class Window(QMainWindow, Ui_MainWindow):
         logging.info("Countdown at -1 resetting capture button?")                                                     # after capture
         self.capture_button.setText("")
         self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
-        if globals.SETTINGS["COLLAGE_ID"] is None:
-            self.showImageControlButtons(True)
+        if globals.CAPTURE_MODE is not None and globals.CaptureMode.COLLAGE:
+            logging.info("Collage Image Captured")
+            # Set the image path of the current image in the collage at the correct position
+            globals.CURRENT_COLLAGE.images[globals.CURRENT_COLLAGE.currentImage].imagePath = globals.FILE_NAME
+            
+            # in case this was the last photo of the collage we need to save the collage
+            if globals.CURRENT_COLLAGE.currentImage == len(globals.CURRENT_COLLAGE.images) - 1:
+                globals.FREEZE_STREAM = True
+                self.showImageControlButtons(True)
+                self.capture_button.setEnabled(False)
+                self.renderImagesToCollage(globals.CURRENT_COLLAGE)
+                #globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
+                globals.CAPTURE_MODE = None
+                logging.info("Collage Finished")
+            else:
+                globals.CURRENT_COLLAGE.currentImage += 1
+                time.sleep(2)
+                switch_canon_to_liveview()
+                self.showImageControlButtons(False)
+                self.capture_button.setEnabled(True)
 
 
     def on_preview_finished(self):
-        if globals.SETTINGS["SHOW_RECAPTURE"] == False:
+        if globals.CAPTURE_MODE is not None and globals.CaptureMode.SINGLE and globals.SETTINGS["SHOW_RECAPTURE"] == False:
+            globals.CAPTURE_MODE = None
             self.stackedWidget.setCurrentIndex(0)
-        if globals.SETTINGS["COLLAGE_ID"] is not None and \
-            globals.SETTINGS["COLLAGE_ID"]+1 < len(globals.SETTINGS["COLLAGE_POSITIONS"]):
-            globals.SETTINGS["COLLAGE_ID"] += 1
-            time.sleep(2)
-            switch_canon_to_liveview()
-            self.showImageControlButtons(False)
-            self.capture_button.setEnabled(True)
-        elif globals.SETTINGS["COLLAGE_ID"] is not None and \
-            globals.SETTINGS["COLLAGE_ID"]+1 == len(globals.SETTINGS["COLLAGE_POSITIONS"]):
-            globals.FREEZE_STREAM = True
-            self.showImageControlButtons(True)
-            self.capture_button.setEnabled(False)
-            globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-            collage = globals.SETTINGS["COLLAGE_TEMPLATE"]
-            collage = cv2.cvtColor(collage, cv2.COLOR_BGR2RGB)
-            cv2.imwrite(globals.FILE_NAME, collage)
-            globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
-            globals.SETTINGS["COLLAGE_TEMPLATE"] = None
-            logging.info("Collage Finished")
+        if globals.CAPTURE_MODE is not None and globals.CaptureMode.COLLAGE:
+            logging.info("Collage Image finished how to preview this?")
         else:
-           self.homeButtonClicked()
+            logging.info("Single Image Captured")
+            self.showImageControlButtons(True)
+            globals.CAPTURE_MODE = None
+            self.homeButtonClicked()
+            
+           
+    def renderImagesToCollage(self, collage: globals.Collage):
+        #load the collage template
+        collage_template = cv2.imread(os.path.join(os.path.dirname(__file__), "ui", "collages", collage.name))
+        collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
+        
+        # render the images to the collage
+        for imagePosition in collage.images:
+            image = cv2.imread(imagePosition.imagePath)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cv2.resize(image, (imagePosition.size.width, imagePosition.size.height ), interpolation = cv2.INTER_AREA)
+            ycenter = imagePosition.position.y
+            xcenter = imagePosition.position.x
+            width = imagePosition.size.width
+            height = imagePosition.size.height
+            # now render the image to the template at the correct position with th ecorrect size
+            collage_template[ycenter-int(height/2):ycenter+int(height/2), xcenter-int(width/2):xcenter+int(width/2)] = image
+            
+            
+        globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(globals.FILE_NAME, collage_template)
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")
