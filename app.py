@@ -222,7 +222,7 @@ class Window(QMainWindow, Ui_MainWindow):
             self.print_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
 
     def showImageControlButtons(self, visible):
-        if visible:                                                     # icon menue is visible
+        if visible:                          
             self.home_button.setVisible(True)
             self.delete_button.setVisible(globals.SETTINGS["SHOW_DELETE"])
             self.capture_button.setVisible(globals.SETTINGS["SHOW_RECAPTURE"])
@@ -249,6 +249,7 @@ class Window(QMainWindow, Ui_MainWindow):
     def startButtonClicked(self):
         logging.info("Start Button pressed")
         globals.CAPTURE_MODE = globals.CaptureMode.SINGLE
+        globals.CURRENT_COLLAGE = None
         switch_canon_to_liveview()
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
@@ -260,8 +261,9 @@ class Window(QMainWindow, Ui_MainWindow):
         globals.CAPTURE_MODE = globals.CaptureMode.COLLAGE
         globals.CURRENT_COLLAGE = globals.Collage("Beach.png", [
             globals.ImagePosition(1, globals.Coordinates(1500, 440), globals.Size(780, 520)),
-            #globals.ImagePosition(2, (547, 1200), (780, 520)),
-            #globals.ImagePosition(3, (1500, 1200), (780, 520)),
+            globals.ImagePosition(2, globals.Coordinates(547, 440), globals.Size(780, 520)),
+            globals.ImagePosition(3, globals.Coordinates(547, 1200), globals.Size(780, 520)),
+            globals.ImagePosition(4, globals.Coordinates(1500, 1200), globals.Size(780, 520)),
         ])
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
@@ -310,7 +312,8 @@ class Window(QMainWindow, Ui_MainWindow):
         logging.info("Countdown at -1 resetting capture button?")                                                     # after capture
         self.capture_button.setText("")
         self.capture_button.setIcon(QIcon(":/files/icons/aperature.png"))
-        if globals.CAPTURE_MODE is not None and globals.CaptureMode.COLLAGE:
+        logging.info(f"Current Capture Mode: {globals.CAPTURE_MODE}")
+        if globals.CAPTURE_MODE is not None and globals.CAPTURE_MODE is globals.CaptureMode.COLLAGE:
             logging.info("Collage Image Captured")
             # Set the image path of the current image in the collage at the correct position
             globals.CURRENT_COLLAGE.images[globals.CURRENT_COLLAGE.currentImage].imagePath = globals.FILE_NAME
@@ -322,7 +325,6 @@ class Window(QMainWindow, Ui_MainWindow):
                 self.capture_button.setEnabled(False)
                 self.renderImagesToCollage(globals.CURRENT_COLLAGE)
                 #globals.SETTINGS["PREVIEW_TIME_SECONDS"] = self.original_preview_time
-                globals.CAPTURE_MODE = None
                 logging.info("Collage Finished")
             else:
                 globals.CURRENT_COLLAGE.currentImage += 1
@@ -330,13 +332,17 @@ class Window(QMainWindow, Ui_MainWindow):
                 switch_canon_to_liveview()
                 self.showImageControlButtons(False)
                 self.capture_button.setEnabled(True)
-
-
+        else:
+            logging.info("Single Image Captured showing control buttons")
+            self.showImageControlButtons(True)
+            
+            
+            
     def on_preview_finished(self):
-        if globals.CAPTURE_MODE is not None and globals.CaptureMode.SINGLE and globals.SETTINGS["SHOW_RECAPTURE"] == False:
+        if globals.CAPTURE_MODE is not None and globals.CAPTURE_MODE is globals.CaptureMode.SINGLE and globals.SETTINGS["SHOW_RECAPTURE"] == False:
             globals.CAPTURE_MODE = None
             self.stackedWidget.setCurrentIndex(0)
-        if globals.CAPTURE_MODE is not None and globals.CaptureMode.COLLAGE:
+        if globals.CAPTURE_MODE is not None and globals.CAPTURE_MODE is globals.CaptureMode.COLLAGE:
             logging.info("Collage Image finished how to preview this?")
         else:
             logging.info("Single Image Captured")
@@ -372,6 +378,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.worker.cancel_preview_timer()
         globals.FREEZE_STREAM = False                                       # stops eventually running preview countdown
         globals.SETTINGS["COLLAGE_ID"] = None
+        globals.CAPTURE_MODE = None
 
         self.stackedWidget.setCurrentIndex(0)
     
@@ -384,9 +391,21 @@ class Window(QMainWindow, Ui_MainWindow):
         self.homeButtonClicked()
 
     def printButtonClicked(self):
-        # use CUPS+Gutenprint to print Image via Selpy CP400
         logging.info("Printing photo")
-        subprocess.Popen(["lpr", "-P", globals.SETTINGS["PRINTER_NAME"],globals.FILE_NAME])
+        logging.info(f"Current Capture Mode: {globals.CAPTURE_MODE}")
+        
+        args = ["lpr", "-P", globals.SETTINGS["PRINTER_NAME"]]
+        
+        if globals.CAPTURE_MODE is not None and globals.CAPTURE_MODE is globals.CaptureMode.COLLAGE:
+            # add argument to cut the image to the correct size
+            args.append("-o Cutter=2Inch")
+        
+        args.append(globals.FILE_NAME)
+        
+        printing = subprocess.Popen(args)
+        printing.communicate()
+        self.homeButtonClicked()
+        
 
     @pyqtSlot(QImage)
     def insertQRCode(self, image):
@@ -436,37 +455,36 @@ class Window(QMainWindow, Ui_MainWindow):
             self.collage_button.setEnabled(value)
 
     def fillEmptySettingsWIthDefaults(self):
-        global SETTINGS
      # check for empty settings and fill them with defaults according to the initialization of the SETTINGS object
-        if "WELCOME_MESSAGE" not in SETTINGS:
+        if "WELCOME_MESSAGE" not in globals.SETTINGS:
             globals.SETTINGS["WELCOME_MESSAGE"] = globals.DEFAULT_WELCOME_MESSAGE
-        if "TARGET_DIR" not in SETTINGS:
+        if "TARGET_DIR" not in globals.SETTINGS:
             globals.SETTINGS["TARGET_DIR"] = globals.DEFAULT_TARGET_DIR
-        if "COUNTDOWN_TIME_SECONDS" not in SETTINGS:
+        if "COUNTDOWN_TIME_SECONDS" not in globals.SETTINGS:
             globals.SETTINGS["COUNTDOWN_TIME_SECONDS"] = globals.DEFAULT_COUNTDOWN_TIME_SECONDS
-        if "PREVIEW_TIME_SECONDS" not in SETTINGS:
+        if "PREVIEW_TIME_SECONDS" not in globals.SETTINGS:
             globals.SETTINGS["PREVIEW_TIME_SECONDS"] = globals.DEFAULT_PREVIEW_TIME_SECONDS
-        if "SHOW_COLLAGE" not in SETTINGS:
+        if "SHOW_COLLAGE" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_COLLAGE"] = globals.DEFAULT_SHOW_COLLAGE
-        if "SHOW_DELETE" not in SETTINGS:
+        if "SHOW_DELETE" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_DELETE"] = globals.DEFAULT_SHOW_DELETE
-        if "SHOW_RECAPTURE" not in SETTINGS:
+        if "SHOW_RECAPTURE" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_RECAPTURE"] = globals.DEFAULT_SHOW_RECAPTURE
-        if "SHOW_PRINT" not in SETTINGS:
+        if "SHOW_PRINT" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_PRINT"] = globals.DEFAULT_SHOW_PRINT
-        if "SHOW_SHARE" not in SETTINGS:
+        if "SHOW_SHARE" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_SHARE"] = globals.DEFAULT_SHOW_SHARE
-        if "SHOW_BUTTON_TEXT" not in SETTINGS:
+        if "SHOW_BUTTON_TEXT" not in globals.SETTINGS:
             globals.SETTINGS["SHOW_BUTTON_TEXT"] = globals.DEFAULT_SHOW_BUTTON_TEXT
-        if "BACKGROUND_IMAGE" not in SETTINGS:
+        if "BACKGROUND_IMAGE" not in globals.SETTINGS:
             globals.SETTINGS["BACKGROUND_IMAGE"] = globals.DEFAULT_BACKGROUND_IMAGE
-        if "CAMERA_INDEX" not in SETTINGS:
+        if "CAMERA_INDEX" not in globals.SETTINGS:
             globals.SETTINGS["CAMERA_INDEX"] = globals.DEFAULT_CAMERA_INDEX
-        if "COUNTDOWN_SOUND" not in SETTINGS:
+        if "COUNTDOWN_SOUND" not in globals.SETTINGS:
             globals.SETTINGS["COUNTDOWN_SOUND"] = globals.DEFAULT_COUNTDOWN_SOUND
-        if "WELCOME_TEXT_COLOR" not in SETTINGS:
+        if "WELCOME_TEXT_COLOR" not in globals.SETTINGS:
             globals.SETTINGS["WELCOME_TEXT_COLOR"] = globals.DEFAULT_WELCOME_TEXT_COLOR
-        if "IMAGE_BORDER_COLOR" not in SETTINGS:
+        if "IMAGE_BORDER_COLOR" not in globals.SETTINGS:
             globals.SETTINGS["IMAGE_BORDER_COLOR"] = globals.DEFAULT_IMAGE_BORDER_COLOR
 
     def show_loading_spinner(self):
@@ -480,7 +498,6 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def loadSettings(self):
         # load the settings from yaml to globals to use them as variables
-        global SETTINGS
         wasEmptyFile = False
 
         # check if settings file exists
@@ -489,21 +506,21 @@ class Window(QMainWindow, Ui_MainWindow):
             with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "w") as outfile:
                 try:
                     # fill SETTINGS with default values
-                    yaml.dump(SETTINGS, outfile, default_flow_style=False)
+                    yaml.dump(globals.SETTINGS, outfile, default_flow_style=False)
                 except yaml.YAMLError as exc:
                     logging.error(exc)
 
         with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "r") as stream:
             try:
-                SETTINGS = yaml.safe_load(stream)
+                globals.SETTINGS = yaml.safe_load(stream)
             except yaml.YAMLError as exc:
                 logging.error(exc)
 
         # in case of an empty settings file the SETTINGS object will be None
         # Initialization of the values is done in fillEmptySettingsWIthDefaults
-        if SETTINGS is None:
+        if globals.SETTINGS is None:
             wasEmptyFile = True
-            SETTINGS = {}
+            globals.SETTINGS = {}
 
         self.fillEmptySettingsWIthDefaults()
 
@@ -511,7 +528,7 @@ class Window(QMainWindow, Ui_MainWindow):
         if wasEmptyFile:
             with open(os.path.join(os.path.dirname(__file__), "settings.yaml"), "w") as outfile:
                 try:
-                    yaml.dump(SETTINGS, outfile, default_flow_style=False)
+                    yaml.dump(globals.SETTINGS, outfile, default_flow_style=False)
                 except yaml.YAMLError as exc:
                     logging.error(exc)
 
