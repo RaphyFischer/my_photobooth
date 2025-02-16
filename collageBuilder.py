@@ -18,7 +18,7 @@ class CollageRenderer:
             return im.crop(bbox)
         return im
 
-    def renderImagesToCollage(collage: globals.Collage, targetFile: str):
+    def renderImagesToCollage(self, collage: globals.Collage, targetFile: str):
         # Load the collage template
         collage_template_path = os.path.join(os.path.dirname(__file__), "ui", "collages", collage.name)
         collage_template = Image.open(collage_template_path).convert("RGBA")
