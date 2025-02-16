@@ -259,11 +259,10 @@ class Window(QMainWindow, Ui_MainWindow):
     def collageButtonClicked(self):
         logging.info("Start Collage clicked")
         globals.CAPTURE_MODE = globals.CaptureMode.COLLAGE
-        globals.CURRENT_COLLAGE = globals.Collage("Beach.png", [
-            globals.ImagePosition(1, globals.Coordinates(1500, 440), globals.Size(780, 520)),
-            globals.ImagePosition(2, globals.Coordinates(547, 440), globals.Size(780, 520)),
-            globals.ImagePosition(3, globals.Coordinates(547, 1200), globals.Size(780, 520)),
-            globals.ImagePosition(4, globals.Coordinates(1500, 1200), globals.Size(780, 520)),
+        globals.CURRENT_COLLAGE = globals.Collage("collage_3_by_2.png", [
+            globals.ImagePosition(1, globals.Coordinates(60, 118), 5, 583, globals.Size(505, 360)),
+            globals.ImagePosition(2, globals.Coordinates(60, 525), 356, 583, globals.Size(500, 350)),
+            globals.ImagePosition(3, globals.Coordinates(60, 922), 5, 583, globals.Size(505, 360)),
         ])
         self.showImageControlButtons(False)
         self.stackedWidget.setCurrentIndex(1)
@@ -352,26 +351,29 @@ class Window(QMainWindow, Ui_MainWindow):
             
            
     def renderImagesToCollage(self, collage: globals.Collage):
-        #load the collage template
-        collage_template = cv2.imread(os.path.join(os.path.dirname(__file__), "ui", "collages", collage.name))
-        collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
-        
-        # render the images to the collage
-        for imagePosition in collage.images:
-            image = cv2.imread(imagePosition.imagePath)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(image, (imagePosition.size.width, imagePosition.size.height ), interpolation = cv2.INTER_AREA)
-            ycenter = imagePosition.position.y
-            xcenter = imagePosition.position.x
-            width = imagePosition.size.width
-            height = imagePosition.size.height
-            # now render the image to the template at the correct position with th ecorrect size
-            collage_template[ycenter-int(height/2):ycenter+int(height/2), xcenter-int(width/2):xcenter+int(width/2)] = image
-            
-            
+        renderer = globals.CollageRenderer()
         globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
-        collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
-        cv2.imwrite(globals.FILE_NAME, collage_template)
+        renderer.renderImagesToCollage(collage, globals.FILE_NAME)
+        #load the collage template
+        # collage_template = cv2.imread(os.path.join(os.path.dirname(__file__), "ui", "collages", collage.name))
+        # collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
+        
+        # # render the images to the collage
+        # for imagePosition in collage.images:
+        #     image = cv2.imread(imagePosition.imagePath)
+        #     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        #     image = cv2.resize(image, (imagePosition.size.width, imagePosition.size.height ), interpolation = cv2.INTER_AREA)
+        #     ycenter = imagePosition.position.y
+        #     xcenter = imagePosition.position.x
+        #     width = imagePosition.size.width
+        #     height = imagePosition.size.height
+        #     # now render the image to the template at the correct position with th ecorrect size
+        #     collage_template[ycenter-int(height/2):ycenter+int(height/2), xcenter-int(width/2):xcenter+int(width/2)] = image
+            
+            
+        # globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
+        # collage_template = cv2.cvtColor(collage_template, cv2.COLOR_BGR2RGB)
+        # cv2.imwrite(globals.FILE_NAME, collage_template)
 
     def homeButtonClicked(self):
         logging.info("Home Button pressed")

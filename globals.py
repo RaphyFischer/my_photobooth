@@ -76,6 +76,8 @@ class Size:
 class ImagePosition:
     id: int
     position: Coordinates
+    angle: int
+    offset: int
     size: Size
     imagePath: str = None
 

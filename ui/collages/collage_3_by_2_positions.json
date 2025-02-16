@@ -1,0 +1,8 @@
+{
+    "filename": "collage_3_by_2.png",
+    "images": [
+        {"id": 0, "position": [60, 118],"angle": 5, "offset": 583, "size": [505, 360]}, 
+        {"id": 1, "position": [60, 525],"angle": 356, "offset": 583, "size": [500, 350]}, 
+        {"id": 2, "position": [60, 922],"angle": 560, "offset": 583, "size": [505, 360]}
+    ]
+}
