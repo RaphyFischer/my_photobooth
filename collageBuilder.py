@@ -6,17 +6,8 @@ from PIL import Image, ImageChops, ImageOps
 
 class CollageRenderer:
 
-    def fit_image_to_placeholder(self, image, placeholder_size):
+    def fit_image_to_placeholder(self,image, placeholder_size):
         return ImageOps.fit(image, placeholder_size, Image.LANCZOS)
-
-    def trim(im):
-        bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
-        diff = ImageChops.difference(im, bg)
-        diff = ImageChops.add(diff, diff, 2.0, -100)
-        bbox = diff.getbbox()
-        if bbox:
-            return im.crop(bbox)
-        return im
 
     def renderImagesToCollage(self, collage: globals.Collage, targetFile: str):
         # Load the collage template
@@ -33,7 +24,7 @@ class CollageRenderer:
             image = Image.open(fullPath).convert("RGBA")
             rotated_image = image.rotate(imagePosition.angle, expand=True, resample=Image.BICUBIC)
             placeholder_size = (imagePosition.size.width, imagePosition.size.height)
-            fitted_image = fit_image_to_placeholder(rotated_image, placeholder_size)
+            fitted_image = self.fit_image_to_placeholder(rotated_image, placeholder_size)
             
         # Create a new image with the same size as the template
             result = Image.new("RGBA", collage_template.size)
