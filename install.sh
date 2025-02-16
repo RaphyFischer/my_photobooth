@@ -2,7 +2,7 @@
 sudo apt install -y python3 python3-pip
 sudo apt-get -y install v4l-utils
 sudo apt install -y gphoto2
-sudo apt install -y libgphoto2-6
+sudo apt install -y libgphoto2-6 libxcb-cursor-dev
 sudo apt install -y qtcreator qtbase5-dev qt5-qmake cmake
 sudo apt install -y cups
 sudo apt-get install -y printer-driver-gutenprint

@@ -15,6 +15,7 @@ from PyQt6.QtGui import QImage, QPixmap, QIcon, QFontDatabase, QColor
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from MainWindow import Ui_MainWindow
 from cameraInitializer import CameraInitializer
+from collageBuilder import CollageRenderer
 import share_gdrive
 from list_cameras import list_stream_cameras
 from settings_button import SettingsButton
@@ -351,7 +352,7 @@ class Window(QMainWindow, Ui_MainWindow):
             
            
     def renderImagesToCollage(self, collage: globals.Collage):
-        renderer = globals.CollageRenderer()
+        renderer = CollageRenderer()
         globals.FILE_NAME = os.path.join(globals.SETTINGS["TARGET_DIR"], "collage_%s.jpg" %datetime.now().strftime("%m%d%Y_%H%M%S"))
         renderer.renderImagesToCollage(collage, globals.FILE_NAME)
         #load the collage template
