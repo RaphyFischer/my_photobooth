@@ -9,3 +9,4 @@ lock
 *.jpeg
 *.log
 .DS_Store
+env/
